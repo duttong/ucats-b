@@ -68,7 +68,8 @@ class Aeris:
             try:
                 # Read a line from the analyzer
                 data = self.ser.readline().decode()
-                if len(data) > 100:
+                # a full packet of data is typically around 340 bytes
+                if len(data) > 300:
                     parsed_data = self.parse(data)
                     with self.lock:
                         self.data_buffer.append(parsed_data)  # Append new data to the buffer
@@ -117,8 +118,13 @@ class Aeris:
             'fet_t', 'tec_t1', 'tec_t2', 'tec_v', 'tec_amp', 'unk43', 'unk44', 'unk45', 'unk46']
             
         try:
-            # Zip the filtered data with the filtered variable names
-            return dict(zip(filtered_variables, data))
+            # Zip the filtered variables with data
+            zipped_data = dict(zip(filtered_variables, data))
+            
+            # Filter out variables that start with 'unk'
+            filtered_dict = {key: value for key, value in zipped_data.items() if not key.startswith('unk')}
+            
+            return filtered_dict
 
         except Exception as e:
             print(f'Error parsing Aeris packet: {data}, Error: {e}')
@@ -158,7 +164,7 @@ if __name__ == "__main__":
     data = analyzer.get_all_data()
     import pandas as pd
     df = pd.DataFrame(data)
-    print("Collected data:")
+    print(df)
     df.to_csv('raw.csv', index=None)
     
     #import matplotlib.pyplot as plt
