@@ -3,6 +3,7 @@
 import serial
 import threading
 import time
+from datetime import datetime
 import argparse
 
 class Aeris:
@@ -109,6 +110,11 @@ class Aeris:
         """
         data = packet.replace('\r\n', '')
         data = data.split(',')
+
+        # Replace the Aeris datatime with current system time
+        current_datetime = datetime.now().replace(microsecond=0)    # round to the nearest second
+        data[0] = current_datetime
+            
         # Keep only the variables you need by filtering out indices ...
         #filtered_data = [value for i, value in enumerate(data) if i not in [43, 44, 45, 46]]
         filtered_variables = ['datetime', 'inlet_num', 'press_gas', 'temp_gas', 'therm1', 'therm2', 'therm3', 'therm4', 
@@ -116,7 +122,7 @@ class Aeris:
             'unk10', 'unk11', 'unk12', 'unk13', 'unk14', 'unk15', 'unk16', 'unk17', 'unk18', 'unk19', 
             'unk20', 'unk21', 'ramp', 'co2_1', 'co2_2', 'h2o', 'n2o_1', 'n2o_2', 'input_v', 
             'fet_t', 'tec_t1', 'tec_t2', 'tec_v', 'tec_amp', 'unk43', 'unk44', 'unk45', 'unk46']
-            
+
         try:
             # Zip the filtered variables with data
             zipped_data = dict(zip(filtered_variables, data))
