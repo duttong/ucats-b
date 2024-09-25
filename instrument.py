@@ -5,6 +5,8 @@ from datetime import datetime
 import time
 import os
 from argparse import ArgumentParser
+
+import config as cfg
 from aeris import Aeris
 from o3 import O3_2Btech
 
@@ -20,9 +22,9 @@ class TDL_package:
         self.stream2 = pd.DataFrame()
 
         # Create instances for sensors on different ports (as in the original code)
-        self.instrument_1 = Aeris(port="/dev/ttyUSB0", sim_mode=True)
+        self.instrument_1 = Aeris(port=cfg.devices['aeris1'], sim_mode=True)
         self.instrument_1.verbose = False
-        self.instrument_2 = O3_2Btech(port="unknown", sim_mode=True)
+        self.instrument_2 = O3_2Btech(port=cfg.devices['ozone'], sim_mode=True)
         self.instrument_2.verbose = False
 
         # Connect to each instrument
