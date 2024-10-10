@@ -9,7 +9,7 @@ import argparse
 
 class Aeris:
 
-    def __init__(self, port, baudrate=9600, timeout=1, sim_mode=False):
+    def __init__(self, port, baudrate=9600, timeout=1, prefix=None, sim_mode=False, verbose=False):
         """
         Initialize the Aeris TDL class with the device port and serial configuration.
 
@@ -17,7 +17,9 @@ class Aeris:
             port (str): Serial port to connect to (e.g., 'COM3' or '/dev/ttyUSB0').
             baudrate (int, optional): Baud rate for serial communication. Default is 9600.
             timeout (int, optional): Timeout in seconds for serial communication. Default is 1 second.
+            prefix (str, optional): A prefix string applied to the names of all the data variable returned.
             sim_mode (bool, optional): If True, simulate data instead of using the real device. Default is False.
+            verbose (bool, optional): If True, print data to stdout (the screen).
         """
         self.port = port
         self.baudrate = baudrate
@@ -26,9 +28,10 @@ class Aeris:
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
         self.lock = threading.Lock()  # For thread safety when accessing data
-        self.verbose = False
+        self.verbose = verbose
+        self.prefix = prefix
         self.sim_mode = sim_mode
-
+        
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
         if self.sim_mode:
@@ -78,7 +81,7 @@ class Aeris:
                 data = self.ser.readline().decode()
                 # a full packet of data is typically around 340 bytes
                 if len(data) > 300:
-                    parsed_data = self.parse(data)
+                    parsed_data = self.parse(data, self.prefix)
                     with self.lock:
                         self.data_buffer.append(parsed_data)  # Append new data to the buffer
                     if self.verbose:
@@ -91,7 +94,7 @@ class Aeris:
     def _simulate_test_data(self):
         """Simulate test data generation every 1 second."""
         while self.is_collecting:
-            parsed_data = self.generate_test_data()
+            parsed_data = self.generate_test_data(self.prefix)
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
@@ -115,7 +118,7 @@ class Aeris:
         return data_copy
 
     @staticmethod
-    def parse(packet):
+    def parse(packet, prefix):
         """
         Parse a data packet from the Aeris analyzer and replace the datetime with the computer's
         datetime.
@@ -140,6 +143,9 @@ class Aeris:
             'unk10', 'unk11', 'unk12', 'unk13', 'unk14', 'unk15', 'unk16', 'unk17', 'unk18', 'unk19', 
             'unk20', 'unk21', 'ramp', 'co2_1', 'co2_2', 'h2o', 'n2o_1', 'n2o_2', 'input_v', 
             'fet_t', 'tec_t1', 'tec_t2', 'tec_v', 'tec_amp', 'unk43', 'unk44', 'unk45', 'unk46']
+        
+        if prefix:
+            filtered_variables = [f'{prefix}{v}' if v[0:3] != 'unk' else v for v in filtered_variables ]
 
         try:
             # Zip the filtered variables with data
@@ -154,12 +160,12 @@ class Aeris:
             print(f'Error parsing Aeris packet: {data}, Error: {e}')
 
     @staticmethod
-    def generate_test_data():
+    def generate_test_data(prefix):
         """Generate simulated data excluding variables that start with 'unk'."""
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_time = datetime.now().replace(microsecond=0)
         inlet_num = 1
         simulated_data = {
-            'datetime': timestamp,
+            'datetime': current_time,
             'inlet_num': inlet_num,
             'press_gas': round(random.uniform(900, 1100), 2),
             'temp_gas': round(random.uniform(15, 30), 2),
@@ -182,6 +188,11 @@ class Aeris:
             'tec_v': round(random.uniform(12, 14), 2),
             'tec_amp': round(random.uniform(0.5, 1.5), 2)
         }
+
+        # Add the prefix to the keys, except for 'datetime'
+        if prefix:
+            simulated_data = {f'{prefix}{k}' if k != 'datetime' else k: v for k, v in simulated_data.items()}
+        
         return simulated_data
 
 
@@ -200,7 +211,7 @@ if __name__ == "__main__":
     sim_mode = args.port is None
 
     # Create an instance of Aeris
-    analyzer = Aeris(port=args.port if not sim_mode else 'test', sim_mode=sim_mode)
+    analyzer = Aeris(port=args.port if not sim_mode else 'test', prefix='a1_', sim_mode=sim_mode)
 
     # set verbose mode
     if args.verbose:
@@ -224,7 +235,9 @@ if __name__ == "__main__":
         print("Test interrupted.")
     
     # Retrieve and print all collected data
-    data = analyzer.get_all_data()  
+    data = analyzer.get_all_data()
+    if not  args.verbose:
+        print(data)
     
     # Stop data collection and disconnect
     analyzer.stop_data_collection()

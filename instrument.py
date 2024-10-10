@@ -20,16 +20,23 @@ class TDL_package:
         self.stream_size = stream_size
         self.stream1 = pd.DataFrame()
         self.stream2 = pd.DataFrame()
+        self.stream3 = pd.DataFrame()
 
         # Create instances for sensors on different ports (as in the original code)
-        self.instrument_1 = Aeris(port=cfg.devices['aeris1'], sim_mode=True)
-        self.instrument_1.verbose = False
-        self.instrument_2 = O3_2Btech(port=cfg.devices['ozone'], sim_mode=True)
-        self.instrument_2.verbose = False
-
-        # Connect to each instrument
-        self.instrument_1.connect()
-        self.instrument_2.connect()
+        self.device_1 = Aeris(port=cfg.devices['aeris1'], 
+                              prefix=cfg.data_var_prefix['aeris1'],
+                              sim_mode=cfg.sim_mode['aeris1'])
+        self.device_2 = O3_2Btech(port=cfg.devices['ozone'],
+                                  prefix=cfg.data_var_prefix['ozone'],
+                                  sim_mode=cfg.sim_mode['ozone'])
+        self.device_3 = Aeris(port=cfg.devices['aeris2'],
+                              prefix=cfg.data_var_prefix['aeris2'],
+                              sim_mode=cfg.sim_mode['aeris2'])
+        
+        # Connect to each device
+        self.device_1.connect()
+        self.device_2.connect()
+        self.device_3.connect()
 
         # Load existing data if the CSV already exists
         if os.path.exists(self.file_path):
@@ -48,8 +55,9 @@ class TDL_package:
 
     def start_collection(self, run_duration=None):
         # Start data collection for each instrument
-        self.instrument_1.start_data_collection()
-        self.instrument_2.start_data_collection()
+        self.device_1.start_data_collection()
+        self.device_2.start_data_collection()
+        self.device_3.start_data_collection()
         time.sleep(1)
 
         try:
@@ -59,19 +67,21 @@ class TDL_package:
                 time.sleep(2)
 
                 # Fetch data from each analyzer
-                data_1 = pd.DataFrame(self.instrument_1.get_all_data())
-                data_2 = pd.DataFrame(self.instrument_2.get_all_data())
+                data_1 = pd.DataFrame(self.device_1.get_all_data())
+                data_2 = pd.DataFrame(self.device_2.get_all_data())
+                data_3 = pd.DataFrame(self.device_3.get_all_data())
 
                 # Append new data to the existing streams
                 self.stream1 = pd.concat([self.stream1, data_1], ignore_index=True)
-                self.stream1['datetime'] = pd.to_datetime(self.stream1['datetime'])
                 self.stream2 = pd.concat([self.stream2, data_2], ignore_index=True)
+                self.stream3 = pd.concat([self.stream3, data_3], ignore_index=True)
 
                 if len(self.stream1) == 0 and len(self.stream2) == 0:
                     pass
                 else:
                     # Merge the data streams on 'datetime'
                     full_data = pd.merge(self.stream1, self.stream2, on='datetime', how='outer')
+                    full_data = pd.merge(full_data, self.stream3, on='datetime', how='outer')
                     # remove the last 4 lines. This is to insure all of the data streams have been read for data 4 seconds ago and older.
                     full_data = full_data[:-4]
 
@@ -84,22 +94,23 @@ class TDL_package:
                         full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
                         self.last_saved_datetime = full_data['datetime'].max()  # Update last saved datetime
 
-                    # Keep only the last 'stream_size' rows of data in memory for both streams
+                    # Keep only the last 'stream_size' rows of data in memory for both streams to limit memory requirements of the program.
                     self.stream1 = self.stream1.tail(self.stream_size)
                     self.stream2 = self.stream2.tail(self.stream_size)
+                    self.stream3 = self.stream3.tail(self.stream_size)
 
                     # Print the last 5 rows for reference
-                    print(full_data[['datetime', 'co2_2', 'n2o_2', 'o3']].tail(5))
+                    print(full_data[['datetime', 'd1_co2_2', 'd2_n2o_2', 'oz_o3']].tail(5))
 
         except KeyboardInterrupt:
             print("Stopping data collection.")
         
         finally:
             # Stop data collection and disconnect all instruments
-            self.instrument_1.stop_data_collection()
-            self.instrument_2.stop_data_collection()
-            self.instrument_1.disconnect()
-            self.instrument_2.disconnect()
+            self.device_1.stop_data_collection()
+            self.device_2.stop_data_collection()
+            self.device_1.disconnect()
+            self.device_2.disconnect()
 
 def main():
     # Create the argument parser

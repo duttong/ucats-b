@@ -9,7 +9,7 @@ import random
 
 class O3_2Btech:
 
-    def __init__(self, port, baudrate=4800, timeout=1, sim_mode=False):
+    def __init__(self, port, baudrate=4800, timeout=1, sim_mode=False, verbose=False, prefix=None):
         """
         Initialize the 2Btech Ozone analyzer class with the device port and serial configuration.
 
@@ -18,6 +18,8 @@ class O3_2Btech:
             baudrate (int, optional): Baud rate for serial communication. Default is 4800.
             timeout (int, optional): Timeout in seconds for serial communication. Default is 1 second.
             sim_mode (bool, optional): If True, simulate data instead of using the real device. Default is False.
+            verbose (bool, optional): If True, print data to stdout (the screen).
+            prefix (str, optional): Add a prefix to the data variable names.
         """
         self.port = port
         self.baudrate = baudrate
@@ -26,8 +28,9 @@ class O3_2Btech:
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
         self.lock = threading.Lock()  # For thread safety when accessing data
-        self.verbose = False
+        self.verbose = verbose
         self.sim_mode = sim_mode
+        self.prefix = prefix
 
     def connect(self):
         """Establish the serial connection to the 2Btech ozone analyzer or enter test mode."""
@@ -79,7 +82,7 @@ class O3_2Btech:
                 # Read a line from the analyzer
                 data = self.ser.readline().decode()
                 if len(data) > 10:
-                    parsed_data = self.parse_o3(data)
+                    parsed_data = self.parse_o3(data, self.prefix)
                     with self.lock:
                         self.data_buffer.append(parsed_data)  # Append new data to the buffer
                     if self.verbose:
@@ -93,7 +96,7 @@ class O3_2Btech:
         """Simulate test data generation every 2 seconds."""
         while self.is_collecting:
             test_packet = self.generate_test_data()
-            parsed_data = self.parse_o3(test_packet)
+            parsed_data = self.parse_o3(test_packet, self.prefix)
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
@@ -117,13 +120,14 @@ class O3_2Btech:
         return data_copy
 
     @staticmethod
-    def parse_o3(packet):
+    def parse_o3(packet, pre):
         """
         Parse a data packet from the 2Btech ozone analyzer and replace date/time
         with values from the computer clock.
 
         Args:
             packet (str): Raw packet data from the analyzer.
+            pre (str): Prefix used for naming parsed data variables.
 
         Returns:
             dict: Parsed data as a dictionary.
@@ -136,8 +140,11 @@ class O3_2Btech:
         # Also, we will replace 'date' and 'time' from the packet with current system time
         filtered_data = [value for i, value in enumerate(data) if i not in [5, 6, 7]]
         filtered_data = [current_datetime] + filtered_data
-        filtered_variables = ['datetime', 'o3', 't', 'p', 'flow_a', 'flow_b']
-        
+        if pre:
+            filtered_variables = ['datetime', f'{pre}o3', f'{pre}t', f'{pre}p', f'{pre}flow_a', f'{pre}flow_b']
+        else:
+            filtered_variables = ['datetime', f'o3', f't', f'p', f'flow_a', f'flow_b']
+
         try:
             # Zip the filtered data with the filtered variable names
             return dict(zip(filtered_variables, filtered_data))
