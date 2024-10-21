@@ -1,6 +1,6 @@
 devices:
   aeris1:
-    serial_port: /dev/ttyUSB0
+    serial_port: /dev/ttyUSB3
     sim_mode: true
     data_var_prefix: d1_
     display_vars:
@@ -19,10 +19,19 @@ devices:
       - N2O_ppm
 
   ozone:
-    serial_port: /dev/ttyUSB1
+    serial_port: /dev/ttyUSB0
     sim_mode: true
     data_var_prefix: oz_
     display_vars:
       - t
       - p
       - o3
+
+  h2o:
+    serial_port: /dev/ttyUSB1
+    sim_mode: false
+    data_var_prefix: mc_
+    display_vars:
+      - H2O_sh
+      - H2O_B
+      - H2O_lg

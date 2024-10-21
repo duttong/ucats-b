@@ -33,6 +33,7 @@ class TDL_package(QMainWindow):
         self.stream1 = pd.DataFrame()
         self.stream2 = pd.DataFrame()
         self.stream3 = pd.DataFrame()
+        self.stream4 = pd.DataFrame()
 
         # Initialize the display panel
         self.setWindowTitle("UCATS-B")
@@ -59,11 +60,18 @@ class TDL_package(QMainWindow):
             prefix=devices['ozone']['data_var_prefix'],
             sim_mode=devices['ozone']['sim_mode']
         )
+
+        self.device_4 = Maycomm(
+            port=devices['h2o']['serial_port'],
+            prefix=devices['h2o']['data_var_prefix'],
+            sim_mode=devices['h2o']['sim_mode']
+        )
         
         # Connect to each device
         self.device_1.connect()
         self.device_2.connect()
         self.device_3.connect()
+        self.device_4.connect()
 
         # Timer for periodic data collection
         self.timer = QTimer()
@@ -89,6 +97,7 @@ class TDL_package(QMainWindow):
         self.device_1.start_data_collection()
         self.device_2.start_data_collection()
         self.device_3.start_data_collection()
+        self.device_4.start_data_collection()
 
         # Start the timer to collect data every 1 seconds
         self.timer.start(1000)
@@ -102,11 +111,13 @@ class TDL_package(QMainWindow):
         data_1 = self.device_1.get_all_data()
         data_2 = self.device_2.get_all_data()
         data_3 = self.device_3.get_all_data()
+        data_4 = self.device_4.get_all_data()
 
         # Append new data to streams
         self.stream1 = pd.concat([self.stream1, pd.DataFrame(data_1)], ignore_index=True)
         self.stream2 = pd.concat([self.stream2, pd.DataFrame(data_2)], ignore_index=True)
         self.stream3 = pd.concat([self.stream3, pd.DataFrame(data_3)], ignore_index=True)
+        self.stream4 = pd.concat([self.stream4, pd.DataFrame(data_4)], ignore_index=True)
 
         # Update the display panel with the latest data
         try:
@@ -122,12 +133,17 @@ class TDL_package(QMainWindow):
             self.display_panel.update_display_data('ozone', data_3[-1])
         except IndexError:
             pass
+        try:
+            self.display_panel.update_display_data('h2o', data_4[-1])
+        except IndexError:
+            pass
 
 
         # Merge the data streams and save to CSV
         if not self.stream1.empty and not self.stream2.empty:
             full_data = pd.merge(self.stream1, self.stream2, on='datetime', how='outer')
             full_data = pd.merge(full_data, self.stream3, on='datetime', how='outer')
+            full_data = pd.merge(full_data, self.stream4, on='datetime', how='outer')
 
             # Remove the last 4 lines
             full_data = full_data[:-4]
@@ -144,6 +160,7 @@ class TDL_package(QMainWindow):
             self.stream1 = self.stream1.tail(self.stream_size)
             self.stream2 = self.stream2.tail(self.stream_size)
             self.stream3 = self.stream3.tail(self.stream_size)
+            self.stream4 = self.stream4.tail(self.stream_size)
 
             # Print last 5 rows
             #print(full_data[['datetime', 'd1_N2O_ppm', 'd2_N2O_ppm', 'oz_o3']].tail(5).to_string(header=False))
@@ -154,9 +171,11 @@ class TDL_package(QMainWindow):
         self.device_1.stop_data_collection()
         self.device_2.stop_data_collection()
         self.device_3.stop_data_collection()
+        self.device_4.stop_data_collection()
         self.device_1.disconnect()
         self.device_2.disconnect()
         self.device_3.disconnect()
+        self.device_4.disconnect()
         print("Data collection stopped.")
 
 def main():
