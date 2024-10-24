@@ -27,10 +27,22 @@ class Aeris:
         self.ser = None
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
-        self.lock = threading.Lock()  # For thread safety when accessing data
+        self.lock = threading.Lock()  # This lock is for the shared data buffer
+        self.serial_lock = threading.Lock()  # This lock is specifically for serial communication
         self.verbose = verbose
         self.prefix = prefix
         self.sim_mode = sim_mode
+
+        # variable names from the header returned by the Aeris instrument.
+        self.variables = [
+            "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
+            "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
+            "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
+            "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
+            "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8", 
+            "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "N2O_ppm", "H2O_ppm", "CO_ppm", 
+            "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC", 
+            "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"]
         
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
@@ -77,16 +89,21 @@ class Aeris:
         """Collect data continuously from the device and store it in the buffer."""
         while self.is_collecting:
             try:
-                # Read a line from the analyzer
-                data = self.ser.readline().decode()
-                # a full packet of data is typically around 340 bytes
+                # Locking only around serial port access to avoid conflicts
+                with self.serial_lock:
+                    # Read a line from the analyzer
+                    data = self.ser.readline().decode()
+                
+                # Data parsing and buffer handling should be outside of serial lock
                 if len(data) > 300:
                     parsed_data = self.parse(data, self.prefix)
+                    # Locking around the shared buffer to protect data access
                     with self.lock:
-                        self.data_buffer.append(parsed_data)  # Append new data to the buffer
-                    if self.verbose:
-                        data = data.replace('\n', '')
-                        print(f"Raw data: {data}")
+                        self.data_buffer.append(parsed_data)
+                    
+                if self.verbose:
+                    data = data.replace('\n', '')
+                    print(f"Raw data: {data}")
             except Exception as e:
                 print(f"Error during data collection: {e}")
             time.sleep(0.5)  # Adjust the interval if needed
@@ -100,6 +117,28 @@ class Aeris:
             if self.verbose:
                 print(f"Test data: {parsed_data}")
             time.sleep(1)  # Simulate data every 1 second
+
+    def send_command(self, command):
+        """
+        Send a serial command to the Aeris instrument.
+        Args:
+            command (str): The command to be sent to the device.
+        """
+        if not self.sim_mode:
+            with self.serial_lock:
+                self.ser.write(command.encode())
+                response = self.ser.readline().decode().strip()
+                self.command_response = response  # Store response
+                if self.verbose:
+                    print(f"Sent: {command}, Received: {response}")
+                return response
+        else:
+            # Simulate response
+            simulated_response = f"Simulated response to {command}"
+            if self.verbose:
+                print(f"Sent (simulated): {command}, Received: {simulated_response}")
+            self.command_response = simulated_response
+            return simulated_response
 
     def stop_data_collection(self):
         """Stop collecting data."""
@@ -117,8 +156,7 @@ class Aeris:
             self.data_buffer.clear()  # Clear the buffer after returning the data
         return data_copy
 
-    @staticmethod
-    def parse(packet, prefix):
+    def parse(self, packet, prefix):
         """
         Parse a data packet from the Aeris analyzer and replace the datetime with the computer's
         datetime.
@@ -135,7 +173,8 @@ class Aeris:
         # Replace the Aeris datatime with current system time
         current_datetime = datetime.now().replace(microsecond=0)    # round to the nearest second
         data[0] = current_datetime
-            
+
+        """    
         # Keep only the variables you need by filtering out indices ...
         #filtered_data = [value for i, value in enumerate(data) if i not in [43, 44, 45, 46]]
         filtered_variables = ['datetime', 'inlet_num', 'press_gas', 'temp_gas', 'therm1', 'therm2', 'therm3', 'therm4', 
@@ -146,10 +185,14 @@ class Aeris:
         
         if prefix:
             filtered_variables = [f'{prefix}{v}' if v[0:3] != 'unk' else v for v in filtered_variables ]
+        """
+
+        if prefix:
+            self.variables = [f'{prefix}{v}' for v in self.variables]
 
         try:
             # Zip the filtered variables with data
-            zipped_data = dict(zip(filtered_variables, data))
+            zipped_data = dict(zip(self.variables, data))
             
             # Filter out variables that start with 'unk'
             filtered_dict = {key: value for key, value in zipped_data.items() if not key.startswith('unk')}
@@ -161,33 +204,45 @@ class Aeris:
 
     @staticmethod
     def generate_test_data(prefix):
-        """Generate simulated data excluding variables that start with 'unk'."""
+        """Generate simulated data for all variables, excluding those that start with 'win' or 'Wall'."""
         current_time = datetime.now().replace(microsecond=0)
         inlet_num = 1
+
+        # Generate simulated data for each variable.
         simulated_data = {
-            'datetime': current_time,
-            'inlet_num': inlet_num,
-            'press_gas': round(random.uniform(900, 1100), 2),
-            'temp_gas': round(random.uniform(15, 30), 2),
-            'therm1': round(random.uniform(10, 20), 2),
-            'therm2': round(random.uniform(10, 20), 2),
-            'therm3': round(random.uniform(10, 20), 2),
-            'therm4': round(random.uniform(10, 20), 2),
-            'laser_t': round(random.uniform(20, 30), 2),
-            'det_t': round(random.uniform(20, 30), 2),
-            'ramp': round(random.uniform(0.0, 1.0), 2),
-            'co2_1': round(random.uniform(350, 450), 2),
-            'co2_2': round(random.uniform(350, 450), 2),
-            'h2o': round(random.uniform(1000, 2000), 2),
-            'n2o_1': round(random.uniform(300, 400), 2),
-            'n2o_2': round(random.uniform(300, 400), 2),
-            'input_v': round(random.uniform(4.5, 5.5), 2),
-            'fet_t': round(random.uniform(30, 40), 2),
-            'tec_t1': round(random.uniform(20, 30), 2),
-            'tec_t2': round(random.uniform(20, 30), 2),
-            'tec_v': round(random.uniform(12, 14), 2),
-            'tec_amp': round(random.uniform(0.5, 1.5), 2)
+            "datetime": current_time,
+            "Inlet_Number": inlet_num,
+            "P_mbars": round(random.uniform(900, 1100), 2),
+            "T0_degC": round(random.uniform(15, 25), 2),
+            "T1_degC": round(random.uniform(15, 25), 2),
+            "T2_degC": round(random.uniform(15, 25), 2),
+            "T5_degC": round(random.uniform(15, 25), 2),
+            "Tgas_degC": round(random.uniform(15, 25), 2),
+            "Laser_PID_Readout": round(random.uniform(0, 100), 2),
+            "Det_PID_Readout": round(random.uniform(0, 100), 2),
+            "Det_Bkgd": round(random.uniform(0, 10), 2),
+            "Ramp_Ampl": round(random.uniform(0.0, 1.0), 2),
+            "N2O_ppm": round(random.uniform(300, 400), 2),
+            "H2O_ppm": round(random.uniform(1000, 2000), 2),
+            "CO_ppm": round(random.uniform(0, 10), 2),
+            "Power_Input_mV": round(random.uniform(4.5, 5.5), 2),
+            "FET_T_degC": round(random.uniform(30, 40), 2),
+            "TEC_Temp_degC": round(random.uniform(20, 30), 2),
+            "TEC_Sink_Temp_degC": round(random.uniform(20, 30), 2),
+            "TEC_Power_W": round(random.uniform(0.5, 2.0), 2),
+            "GPS_Time": current_time.time(),
+            "Latitude": round(random.uniform(-90, 90), 6),
+            "Longitude": round(random.uniform(-180, 180), 6),
+            "Alt_m": round(random.uniform(0, 5000), 2)
         }
+
+        # Add entries for variables starting with 'win' as random floats.
+        for i in range(10):
+            simulated_data[f"win0Fit{i}"] = round(random.uniform(0, 1), 3)
+            simulated_data[f"win1Fit{i}"] = round(random.uniform(0, 1), 3)
+
+        # Add Wall_Code as a random integer for simplicity.
+        simulated_data["Wall_Code"] = random.randint(0, 10)
 
         # Add the prefix to the keys, except for 'datetime'
         if prefix:
@@ -224,6 +279,7 @@ if __name__ == "__main__":
     analyzer.start_data_collection()
 
     # If in test mode, wait until the specified number of packets is collected
+    count = 0
     try:
         if args.test:
             time.sleep(args.test * 1)  # Assuming one packet every 1 second
