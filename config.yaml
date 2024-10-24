@@ -1,0 +1,29 @@
+devices:
+
+  aeris1:
+    serial_port: /dev/ttyUSB0
+    sim_mode: true
+    data_var_prefix: d1_
+    display_vars:
+      - Det_Bkgd
+      - Ramp_Ampl
+      - N2O_ppm
+      - CO_ppm
+
+  aeris2:
+    serial_port: /dev/ttyUSB2
+    sim_mode: true
+    data_var_prefix: d2_
+    display_vars:
+      - Det_Bkgd
+      - Ramp_Ampl
+      - N2O_ppm
+
+  ozone:
+    serial_port: /dev/ttyUSB1
+    sim_mode: true
+    data_var_prefix: oz_
+    display_vars:
+      - t
+      - p
+      - o3
