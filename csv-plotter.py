@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import sys
 from pathlib import Path
 import pandas as pd
@@ -15,8 +17,8 @@ class CSVPlotter(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CSV Plotter")
-        self.setGeometry(100, 100, 900, 600)
-        self.setStyleSheet("font-size: 14px;")
+        self.setGeometry(200, 150, 900, 600)
+        self.setStyleSheet("font-size: 14px; background-color: #efe;")
 
         # Main widget and layout
         self.main_widget = QWidget()
@@ -67,6 +69,7 @@ class CSVPlotter(QMainWindow):
         controls_layout.addWidget(self.plot_button)
         controls_layout.setSpacing(10)
         self.controls_layout.addLayout(controls_layout)
+        #self.controls_layout.setStyleSheet("background-color: #efe;")
 
         # Label to display statistics of the visible data
         self.statistics_label = QLabel("Mean: N/A, Std Dev: N/A")
@@ -76,12 +79,6 @@ class CSVPlotter(QMainWindow):
         # Add the controls layout to the fixed-size widget
         self.controls_layout.addLayout(controls_layout)
 
-        # Dark Mode Toggle
-        #self.dark_mode_checkbox = QCheckBox("Dark Mode")
-        #self.dark_mode_checkbox.setStyleSheet("padding: 5px;")
-        #self.dark_mode_checkbox.stateChanged.connect(self.toggle_dark_mode)
-        #self.controls_layout.addWidget(self.dark_mode_checkbox, alignment=Qt.AlignRight)
-
         # Add the fixed-size controls widget to the main layout
         self.layout.addWidget(self.controls_widget)
         
@@ -89,7 +86,7 @@ class CSVPlotter(QMainWindow):
         self.figure = Figure()
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
-        self.toolbar.setStyleSheet("background-color: #eee;")
+        self.toolbar.setStyleSheet("background-color: #efe;")
 
         # Set size policies to make the canvas expand
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -305,29 +302,6 @@ class CSVPlotter(QMainWindow):
         self.ax.set_title('CSV Data Plot')
         self.figure.tight_layout(pad=2.0)
         self.canvas.draw()
-
-    def toggle_dark_mode(self, state):
-        if state == Qt.Checked:
-            self.set_dark_mode()
-        else:
-            self.set_light_mode()
-
-    def set_dark_mode(self):
-        dark_palette = QPalette()
-        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.WindowText, Qt.white)
-        dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
-        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
-        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
-        dark_palette.setColor(QPalette.Text, Qt.white)
-        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ButtonText, Qt.white)
-        dark_palette.setColor(QPalette.BrightText, Qt.red)
-        QApplication.instance().setPalette(dark_palette)
-
-    def set_light_mode(self):
-        QApplication.instance().setPalette(QApplication.style().standardPalette())
 
 def main():
     app = QApplication(sys.argv)

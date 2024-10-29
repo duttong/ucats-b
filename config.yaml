@@ -1,5 +1,4 @@
 devices:
-
   aeris1:
     serial_port: /dev/ttyUSB0
     sim_mode: true

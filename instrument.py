@@ -13,7 +13,8 @@ from PyQt5.QtCore import QTimer
 
 from display_panel import DisplayPanel
 from aeris import Aeris
-from o3 import O3_2Btech
+from o3_sensor import O3_2Btech
+from h2o_sensor import Maycomm
 config_file = Path('config.yaml')
 
 def load_config(file_path='config.yaml'):

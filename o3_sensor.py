@@ -169,7 +169,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test the 2Btech Ozone Analyzer driver.")
     
     parser.add_argument('-p', '--port', required=False, help="Serial port to connect to (e.g., COM3 or /dev/ttyUSB0).")
-    parser.add_argument('-v', '--verbose', required=False, help="Print raw data to stdout")
+    parser.add_argument('-v', '--verbose', action='store_true', help="Print raw data to stdout")
     parser.add_argument('-s', '--simulate', type=int, help="Simulate mode: Number of data packets to read and then exit.")
     
     args = parser.parse_args()
