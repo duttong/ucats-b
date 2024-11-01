@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QGridLayout,
     QComboBox, QFileDialog, QHBoxLayout, QCheckBox, QSizePolicy
 )
 from PyQt5.QtCore import Qt, QTimer
@@ -13,12 +13,20 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationTool
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 
+
 class CSVPlotter(QMainWindow):
     def __init__(self):
         super().__init__()
+        # background colors
+        self.c_background = "oldlace"
+        self.c_buttons = "khaki"
+        self.c_statsline = "mistyrose"
+        self.c_toolbar = "goldenrod"
+        self.c_filetext = "dimgrey"
+
         self.setWindowTitle("CSV Plotter")
-        self.setGeometry(200, 150, 900, 600)
-        self.setStyleSheet("font-size: 14px; background-color: #efe;")
+        self.setGeometry(200, 150, 900, 700)    # upper left coord. then w and h
+        self.setStyleSheet(f"font-size: 14px; background-color: {self.c_background};")
 
         # Main widget and layout
         self.main_widget = QWidget()
@@ -33,23 +41,32 @@ class CSVPlotter(QMainWindow):
         self.ax = None  # Placeholder for the matplotlib axes
 
         # Dropdowns and labels for variable selection
-        self.variable_label_1 = QLabel("Select Variable 1:")
+        pad_one = "1px"
+        self.variable_label_1 = QLabel("Left-Axis Variable 1:")
         self.variable_combo_1 = QComboBox()
-        self.variable_combo_1.setStyleSheet("padding: 5px;")
+        self.variable_combo_1.setStyleSheet(f"padding: {pad_one};")
 
-        self.variable_label_2 = QLabel("Select Variable 2:")
+        self.variable_label_2 = QLabel("Left-Axis Variable 2:")
         self.variable_combo_2 = QComboBox()
-        self.variable_combo_2.setStyleSheet("padding: 5px;")
+        self.variable_combo_2.setStyleSheet(f"padding: {pad_one};")
+
+        self.variable_label_3 = QLabel("Right-Axis Variable 1:")
+        self.variable_combo_3 = QComboBox()
+        self.variable_combo_3.setStyleSheet(f"padding: {pad_one};")
+
+        self.variable_label_4 = QLabel("Right-Axis Variable 2:")
+        self.variable_combo_4 = QComboBox()
+        self.variable_combo_4.setStyleSheet(f"padding: {pad_one};")
 
         # Buttons for loading data and plotting
         self.load_button = QPushButton("Load CSV")
-        self.load_button.setStyleSheet("padding: 8px; margin-right: 5px;")
+        self.load_button.setStyleSheet(f"padding: 8px; margin-right: 5px; background-color: {self.c_buttons}; ")
         self.plot_button = QPushButton("Plot Data")
-        self.plot_button.setStyleSheet("padding: 8px;")
+        self.plot_button.setStyleSheet(f"padding: 8px; background-color: {self.c_buttons}")
 
         # Create a label to display the loaded CSV file name
         self.csv_file_label = QLabel("No file loaded")
-        self.csv_file_label.setStyleSheet("padding: 5px; color: #555;")
+        self.csv_file_label.setStyleSheet(f"padding: 5px; color: {self.c_filetext};")
 
         # Create a horizontal layout for the load button and the file name display
         load_layout = QHBoxLayout()
@@ -60,24 +77,33 @@ class CSVPlotter(QMainWindow):
         # Add the horizontal layout to the controls layout
         self.controls_layout.addLayout(load_layout)
 
-        # Layout arrangement for the top controls
-        controls_layout = QHBoxLayout()
-        controls_layout.addWidget(self.variable_label_1)
-        controls_layout.addWidget(self.variable_combo_1)
-        controls_layout.addWidget(self.variable_label_2)
-        controls_layout.addWidget(self.variable_combo_2)
-        controls_layout.addWidget(self.plot_button)
-        controls_layout.setSpacing(10)
-        self.controls_layout.addLayout(controls_layout)
-        #self.controls_layout.setStyleSheet("background-color: #efe;")
+        controls_layout = QGridLayout()
+        # Add the first column
+        controls_layout.addWidget(self.variable_label_1, 0, 0)
+        controls_layout.addWidget(self.variable_combo_1, 1, 0)
+        controls_layout.addWidget(self.variable_label_2, 2, 0)
+        controls_layout.addWidget(self.variable_combo_2, 3, 0)
 
-        # Label to display statistics of the visible data
-        self.statistics_label = QLabel("Mean: N/A, Std Dev: N/A")
-        self.statistics_label.setStyleSheet("padding: 5px; color: #333;")
-        self.controls_layout.addWidget(self.statistics_label)
+        # Add the second column
+        controls_layout.addWidget(self.variable_label_3, 0, 1)
+        controls_layout.addWidget(self.variable_combo_3, 1, 1)
+        controls_layout.addWidget(self.variable_label_4, 2, 1)
+        controls_layout.addWidget(self.variable_combo_4, 3, 1)
+
+        # Add the plot button in the third column
+        controls_layout.addWidget(self.plot_button, 1, 2)
+
+        # Set spacing and margins as needed
+        controls_layout.setSpacing(10)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add the controls layout to the fixed-size widget
         self.controls_layout.addLayout(controls_layout)
+
+        # Label to display statistics of the visible data
+        self.statistics_label = QLabel("Window Stats: ")
+        self.statistics_label.setStyleSheet(f"padding: 5px; background-color: {self.c_statsline};")
+        self.controls_layout.addWidget(self.statistics_label)
 
         # Add the fixed-size controls widget to the main layout
         self.layout.addWidget(self.controls_widget)
@@ -86,7 +112,7 @@ class CSVPlotter(QMainWindow):
         self.figure = Figure()
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
-        self.toolbar.setStyleSheet("background-color: #efe;")
+        self.toolbar.setStyleSheet(f"background-color: #efe; background-color: {self.c_toolbar}")
 
         # Set size policies to make the canvas expand
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -97,7 +123,8 @@ class CSVPlotter(QMainWindow):
         self.layout.addWidget(self.toolbar)
 
         # Event handlers
-        self.load_button.clicked.connect(self.manual_load_csv)
+        self.new_csv_file = False
+        self.load_button.clicked.connect(self.select_new_file)
         self.plot_button.clicked.connect(self.plot_data)
 
         # Timer for periodic updates
@@ -109,7 +136,7 @@ class CSVPlotter(QMainWindow):
         self.canvas.mpl_connect('draw_event', self.update_statistics)
 
         # Automatically load the most recent tdl-*.csv file on startup
-        self.load_csv()
+        self.load_csv_data()
 
     def update_data(self):
         """
@@ -122,13 +149,17 @@ class CSVPlotter(QMainWindow):
             ylim = ax.get_ylim()
             variable_1 = self.variable_combo_1.currentText()
             variable_2 = self.variable_combo_2.currentText()
+            variable_3 = self.variable_combo_3.currentText()
+            variable_4 = self.variable_combo_4.currentText()
 
             # Reload data (you might want to load only new rows if possible)
-            self.load_csv(self.current_file_path)
+            self.load_csv_data(self.current_file_path)
 
             # Restore the selected variables after reloading the data
             self.variable_combo_1.setCurrentText(variable_1)
             self.variable_combo_2.setCurrentText(variable_2)
+            self.variable_combo_3.setCurrentText(variable_3)
+            self.variable_combo_4.setCurrentText(variable_4)
 
             # Update the plot with new data but maintain the same scales
             self.plot_data()
@@ -178,9 +209,10 @@ class CSVPlotter(QMainWindow):
                 mean_1 = visible_data_1.mean()
                 std_1 = visible_data_1.std()
                 count_1 = visible_data_1.count()
-                stats.append(f"<b>{variable_1}</b>: {mean_1:.2f} ± {std_1:.2f}, N = {count_1}")
+                stats.append(f"Window Stats: <b>{variable_1}</b>: {mean_1:.2f} ± {std_1:.2f}, N = {count_1}")
             else:
-                stats.append(f"<b>{variable_1}</b>: Mean = NaN, Std Dev = NaN, N = 0")
+                stats.append("Window Stats: ")
+                #stats.append(f"<b>{variable_1}</b>: Mean = NaN, Std Dev = NaN, N = 0")
 
         if variable_2 in self.data.columns:
             # Further filter based on y-axis limits for variable_2
@@ -194,11 +226,21 @@ class CSVPlotter(QMainWindow):
                 count_2 = visible_data_2.count()
                 stats.append(f"<b>{variable_2}</b>: {mean_2:.2f} ± {std_2:.2f}, N = {count_2}")
             else:
-                stats.append(f"<b>{variable_2}</b>: Mean = NaN, Std Dev = NaN, N = 0")
+                stats.append("")
+                #stats.append(f"<b>{variable_2}</b>: Mean = NaN, Std Dev = NaN, N = 0")
 
         self.statistics_label.setText(" &nbsp;&nbsp;&nbsp;&nbsp; ".join(stats) if stats else "No data in view")   
 
-    def load_csv(self, file_path=None):
+    def select_new_file(self):
+        # Open file dialog for user to select a new file
+        new_file, _ = QFileDialog.getOpenFileName(self, "Select CSV File", "", "CSV Files (*.csv)")
+        if new_file:
+            self.data = None
+            self.new_csv_file = True
+            self.load_csv_data(new_file)  # Load the new data
+            self.plot_data()
+
+    def load_csv_data(self, file_path=None):
         if file_path is None:
             csv_files = sorted(
                 Path('.').glob('tdl-*.csv'), 
@@ -212,7 +254,7 @@ class CSVPlotter(QMainWindow):
                 return
 
         self.current_file_path = file_path
-
+        
         # Check if data is already loaded
         if hasattr(self, 'data') and self.data is not None:
             last_row_count = len(self.data)
@@ -231,12 +273,16 @@ class CSVPlotter(QMainWindow):
             self.data['datetime'] = pd.to_datetime(self.data['datetime'], errors='coerce')
 
             # Update combo boxes if needed
-            if last_row_count == 0 or set(new_data.columns) != set(self.data.columns):
+            if (last_row_count == 0 or set(new_data.columns) != set(self.data.columns)) and self.new_csv_file == False:
                 self.variable_combo_1.clear()
                 self.variable_combo_2.clear()
+                self.variable_combo_3.clear()
+                self.variable_combo_4.clear()
                 columns = [col for col in self.data.columns if col.lower() != 'datetime']
                 self.variable_combo_1.addItems([""] + columns)
                 self.variable_combo_2.addItems([""] + columns)
+                self.variable_combo_3.addItems([""] + columns)
+                self.variable_combo_4.addItems([""] + columns)
 
                 # Automatically select the first variable if available
                 if columns:
@@ -247,35 +293,54 @@ class CSVPlotter(QMainWindow):
             pass
             #print("No new rows to load.")
 
-    def manual_load_csv(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv);;All Files (*)")
-        if file_path:
-            self.load_csv(file_path)
-
     def plot_data(self):
         if self.data is None:
             return
 
+        # Variables for left and right axes
         variable_1 = self.variable_combo_1.currentText()
         variable_2 = self.variable_combo_2.currentText()
+        variable_3 = self.variable_combo_3.currentText()  # Updated to use a different combo for right axis
+        variable_4 = self.variable_combo_4.currentText()  # Updated to use a different combo for right axis
 
         # Clear the previous plot, but only create the axes if they don't exist
         if self.ax is None:
             self.figure.clear()
             self.ax = self.figure.add_subplot(111)
+            self.ax2 = self.ax.twinx()
 
         self.ax.clear()  # Clear the existing plot without resetting the axes object
+        self.ax2.clear()
 
+        # Set colors for each variable
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']  # List of four colors
         has_data = False
 
+        # Plot data for the left y-axis
         if variable_1 and variable_1 in self.data.columns:
-            self.ax.plot(self.data['datetime'], self.data[variable_1], label=variable_1)
+            self.ax.plot(self.data['datetime'], self.data[variable_1], label=variable_1, color=colors[0])
             has_data = True
 
         if variable_2 and variable_2 != variable_1 and variable_2 in self.data.columns:
-            self.ax.plot(self.data['datetime'], self.data[variable_2], label=variable_2)
+            self.ax.plot(self.data['datetime'], self.data[variable_2], label=variable_2, color=colors[1])
             has_data = True
 
+        # Set up right y-axis if there’s data for variable_3 or variable_4
+        if variable_3 or variable_4:
+            #ax2 = self.ax.twinx()  # Create a secondary y-axis
+
+            if variable_3 and variable_3 in self.data.columns:
+                self.ax2.plot(self.data['datetime'], self.data[variable_3], label=variable_3, color=colors[2])
+                has_data = True
+
+            if variable_4 and variable_4 != variable_3 and variable_4 in self.data.columns:
+                self.ax2.plot(self.data['datetime'], self.data[variable_4], label=variable_4, color=colors[3])
+                has_data = True
+
+            self.ax2.set_ylabel('Value (Right Axis)')
+            self.ax2.legend(loc='upper right')
+
+        # Format x-axis and labels
         xtick_locator = mdates.AutoDateLocator()
         self.ax.xaxis.set_major_locator(xtick_locator)
         xtick_formatter = mdates.DateFormatter('%H:%M:%S')
@@ -289,17 +354,19 @@ class CSVPlotter(QMainWindow):
             label.set_rotation(45)
             label.set_horizontalalignment('right')
 
-        self.ax.set_ylabel('Value')
+        # Left y-axis label
+        self.ax.set_ylabel('Value (Left Axis)')
 
+        # Legend
         if has_data:
-            self.ax.legend()
+            self.ax.legend(loc='upper left')
         else:
             self.ax.legend().set_visible(False)
 
-        # Update the statistics right after plotting
+        # Update the statistics after plotting
         self.update_statistics()
 
-        self.ax.set_title('CSV Data Plot')
+        # Tight layout and draw
         self.figure.tight_layout(pad=2.0)
         self.canvas.draw()
 
