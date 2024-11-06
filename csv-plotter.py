@@ -126,7 +126,7 @@ class CSVPlotter(QMainWindow):
         self.new_csv_file = False
         self.load_button.clicked.connect(self.select_new_file)
         self.plot_button.clicked.connect(self.plot_data)
-
+        
         # Timer for periodic updates
         self.update_interval = 1000  # Update every 1000 milliseconds (1 seconds)
         self.timer = QTimer(self)
@@ -137,22 +137,25 @@ class CSVPlotter(QMainWindow):
 
         # Automatically load the most recent tdl-*.csv file on startup
         self.load_csv_data()
+        self.plot_data()
 
     def update_data(self):
         """
-        Periodically load the new data from the CSV file and update the plot.
+        Periodically load new data from the CSV file and update the plot.
         """
         if self.data is not None and not self.csv_file_label.text().endswith("No recent 'tdl-' CSV file found."):
-            # Store the current x and y limits and selected variables
-            ax = self.figure.gca()
-            xlim = ax.get_xlim()
-            ylim = ax.get_ylim()
+            # Store the current x and y limits for both axes
+            xlim = self.ax.get_xlim()
+            ylim_left = self.ax.get_ylim()
+            ylim_right = self.ax2.get_ylim() if self.ax2 else None
+
+            # Store the current selections for variables
             variable_1 = self.variable_combo_1.currentText()
             variable_2 = self.variable_combo_2.currentText()
             variable_3 = self.variable_combo_3.currentText()
             variable_4 = self.variable_combo_4.currentText()
 
-            # Reload data (you might want to load only new rows if possible)
+            # Reload data (consider loading only new rows if possible)
             self.load_csv_data(self.current_file_path)
 
             # Restore the selected variables after reloading the data
@@ -164,13 +167,15 @@ class CSVPlotter(QMainWindow):
             # Update the plot with new data but maintain the same scales
             self.plot_data()
 
-            # Restore the x and y limits to maintain zoom level
-            ax = self.figure.gca()  # Get the new axis after updating the plot
-            ax.set_xlim(xlim)
-            ax.set_ylim(ylim)
-            
-            self.canvas.draw()
+            # Restore x and y limits to maintain the zoom level
+            self.ax.set_xlim(xlim)
+            self.ax.set_ylim(ylim_left)
+            if ylim_right is not None:
+                self.ax2.set_ylim(ylim_right)
 
+            # Redraw the canvas to reflect changes
+            self.canvas.draw()
+            
     def update_statistics(self, event=None):
         """
         Update the mean, standard deviation, and count (N) based on the visible data within the x-axis and y-axis limits.
@@ -300,45 +305,57 @@ class CSVPlotter(QMainWindow):
         # Variables for left and right axes
         variable_1 = self.variable_combo_1.currentText()
         variable_2 = self.variable_combo_2.currentText()
-        variable_3 = self.variable_combo_3.currentText()  # Updated to use a different combo for right axis
-        variable_4 = self.variable_combo_4.currentText()  # Updated to use a different combo for right axis
+        variable_3 = self.variable_combo_3.currentText()
+        variable_4 = self.variable_combo_4.currentText()
 
-        # Clear the previous plot, but only create the axes if they don't exist
+        # Only create the axes if they don't exist to avoid recreating or clearing them incorrectly
         if self.ax is None:
-            self.figure.clear()
-            self.ax = self.figure.add_subplot(111)
-            self.ax2 = self.ax.twinx()
+            self.ax = self.figure.add_subplot(111)  # Primary (left) y-axis
+            self.ax2 = self.ax.twinx()  # Secondary (right) y-axis
 
-        self.ax.clear()  # Clear the existing plot without resetting the axes object
+        # Clear plot data but keep axis properties
+        self.ax.clear()
         self.ax2.clear()
 
         # Set colors for each variable
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']  # List of four colors
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
         has_data = False
+
+        # Initialize empty lists for lines and labels
+        lines = []
+        labels = []
 
         # Plot data for the left y-axis
         if variable_1 and variable_1 in self.data.columns:
-            self.ax.plot(self.data['datetime'], self.data[variable_1], label=variable_1, color=colors[0])
+            line1, = self.ax.plot(self.data['datetime'], self.data[variable_1], label=variable_1, color=colors[0])
+            lines.append(line1)
+            labels.append(variable_1)
             has_data = True
 
         if variable_2 and variable_2 != variable_1 and variable_2 in self.data.columns:
-            self.ax.plot(self.data['datetime'], self.data[variable_2], label=variable_2, color=colors[1])
+            line2, = self.ax.plot(self.data['datetime'], self.data[variable_2], label=variable_2, color=colors[1])
+            lines.append(line2)
+            labels.append(variable_2)
             has_data = True
 
-        # Set up right y-axis if there’s data for variable_3 or variable_4
-        if variable_3 or variable_4:
-            #ax2 = self.ax.twinx()  # Create a secondary y-axis
+        # Plot data for the right y-axis if there’s data for variable_3 or variable_4
+        if variable_3 and variable_3 in self.data.columns:
+            line3, = self.ax2.plot(self.data['datetime'], self.data[variable_3], label=variable_3, color=colors[2])
+            lines.append(line3)
+            labels.append(variable_3)
+            has_data = True
 
-            if variable_3 and variable_3 in self.data.columns:
-                self.ax2.plot(self.data['datetime'], self.data[variable_3], label=variable_3, color=colors[2])
-                has_data = True
+        if variable_4 and variable_4 != variable_3 and variable_4 in self.data.columns:
+            line4, = self.ax2.plot(self.data['datetime'], self.data[variable_4], label=variable_4, color=colors[3])
+            lines.append(line4)
+            labels.append(variable_4)
+            has_data = True
 
-            if variable_4 and variable_4 != variable_3 and variable_4 in self.data.columns:
-                self.ax2.plot(self.data['datetime'], self.data[variable_4], label=variable_4, color=colors[3])
-                has_data = True
-
-            self.ax2.set_ylabel('Value (Right Axis)')
-            self.ax2.legend(loc='upper right')
+        # Set labels for both y-axes
+        self.ax.set_ylabel('Value (Left Axis)')
+        self.ax2.set_ylabel('Value (Right Axis)')  # This should ensure it appears on the right
+        self.ax2.yaxis.set_label_position("right")  # Explicitly set label position to the right
+        self.ax2.yaxis.tick_right()  # Ensure ticks appear on the right
 
         # Format x-axis and labels
         xtick_locator = mdates.AutoDateLocator()
@@ -348,28 +365,24 @@ class CSVPlotter(QMainWindow):
 
         if not self.data['datetime'].empty:
             date_str = self.data['datetime'].iloc[0].strftime('%Y-%m-%d')
-            self.ax.set_xlabel(f'Datetime (Date: {date_str})')
+            self.ax.set_xlabel(f'Date: {date_str}')
 
         for label in self.ax.get_xticklabels():
             label.set_rotation(45)
             label.set_horizontalalignment('right')
 
-        # Left y-axis label
-        self.ax.set_ylabel('Value (Left Axis)')
-
         # Legend
-        if has_data:
-            self.ax.legend(loc='upper left')
+        if has_data and lines:  # Only add legend if there's data and lines to show
+            self.ax.legend(lines, labels, loc="best")
         else:
             self.ax.legend().set_visible(False)
 
         # Update the statistics after plotting
         self.update_statistics()
 
-        # Tight layout and draw
-        self.figure.tight_layout(pad=2.0)
+        self.figure.tight_layout()
         self.canvas.draw()
-
+        
 def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
