@@ -30,7 +30,7 @@ devices:
   h2o:
     serial_port: /dev/ttyUSB1
     sim_mode: false
-    data_var_prefix: mc_
+    data_var_prefix: w_
     display_vars:
       - H2O_sh
       - H2O_B
