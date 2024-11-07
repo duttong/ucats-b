@@ -17,6 +17,8 @@ import matplotlib.dates as mdates
 class CSVPlotter(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.open_windows = []  # List to store references to open windows
+
         # background colors
         self.c_background = "oldlace"
         self.c_buttons = "khaki"
@@ -61,8 +63,10 @@ class CSVPlotter(QMainWindow):
         # Buttons for loading data and plotting
         self.load_button = QPushButton("Load CSV")
         self.load_button.setStyleSheet(f"padding: 8px; margin-right: 5px; background-color: {self.c_buttons}; ")
-        self.plot_button = QPushButton("Plot Data")
+        self.plot_button = QPushButton("Refresh Plot")
         self.plot_button.setStyleSheet(f"padding: 8px; background-color: {self.c_buttons}")
+        self.new_plot_button = QPushButton("New Plot", self)
+        self.new_plot_button.setStyleSheet(f"padding: 8px; background-color: {self.c_buttons}")
 
         # Create a label to display the loaded CSV file name
         self.csv_file_label = QLabel("No file loaded")
@@ -72,6 +76,7 @@ class CSVPlotter(QMainWindow):
         load_layout = QHBoxLayout()
         load_layout.addWidget(self.load_button)
         load_layout.addWidget(self.csv_file_label)
+        load_layout.addWidget(self.new_plot_button)
         load_layout.setSpacing(10)
 
         # Add the horizontal layout to the controls layout
@@ -126,6 +131,7 @@ class CSVPlotter(QMainWindow):
         self.new_csv_file = False
         self.load_button.clicked.connect(self.select_new_file)
         self.plot_button.clicked.connect(self.plot_data)
+        self.new_plot_button.clicked.connect(self.open_new_plot_window)
         
         # Timer for periodic updates
         self.update_interval = 1000  # Update every 1000 milliseconds (1 seconds)
@@ -138,6 +144,12 @@ class CSVPlotter(QMainWindow):
         # Automatically load the most recent tdl-*.csv file on startup
         self.load_csv_data()
         self.plot_data()
+
+    def open_new_plot_window(self):
+        # Open a new plot window instance
+        new_window = CSVPlotter()
+        new_window.show()
+        self.open_windows.append(new_window)  # Keep a reference to prevent garbage collection
 
     def update_data(self):
         """
