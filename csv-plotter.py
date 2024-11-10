@@ -300,7 +300,7 @@ class CSVPlotter(QMainWindow):
             self.data = pd.DataFrame()
 
         # Load new rows only
-        new_data = pd.read_csv(file_path, skiprows=range(1, last_row_count + 1))
+        new_data = pd.read_csv(file_path, skiprows=range(1, last_row_count + 1), delimiter=',', engine='python', on_bad_lines='skip')
         if 'datetime' in new_data.columns:
             new_data['datetime'] = pd.to_datetime(new_data['datetime'], errors='coerce')
 
