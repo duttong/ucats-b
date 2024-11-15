@@ -1,0 +1,31 @@
+# These are the variables in the current UCATS-B data file. The variable
+# prefixes are defined in the config.yaml file.
+#
+# Aeris d1: 
+#     d1_Inlet_Number, d1_P_mbars, d1_T0_degC, d1_T1_degC, d1_T2_degC, 
+#     d1_T5_degC, d1_Tgas_degC, d1_Laser_PID_Readout, d1_Det_PID_Readout, 
+#     d1_Det_Bkgd, d1_Ramp_Ampl, d1_N2O_ppm, d1_H2O_ppm, d1_CO_ppm, 
+#     d1_Power_Input_mV, d1_FET_T_degC, d1_TEC_Temp_degC, d1_TEC_Sink_Temp_degC, 
+#     d1_TEC_Power_W, d1_GPS_Time, d1_Latitude, d1_Longitude, d1_Alt_m, 
+#     d1_win0Fit0, d1_win1Fit0, d1_win0Fit1, d1_win1Fit1, d1_win0Fit2, 
+#     d1_win1Fit2, d1_win0Fit3, d1_win1Fit3, d1_win0Fit4, d1_win1Fit4, 
+#     d1_win0Fit5, d1_win1Fit5, d1_win0Fit6, d1_win1Fit6, d1_win0Fit7, 
+#     d1_win1Fit7, d1_win0Fit8, d1_win1Fit8, d1_win0Fit9, d1_win1Fit9, 
+#     d1_Wall_Code
+# Aeris d2:
+#     The same variables and d2_CO2_ppm instead of CO
+# 2Btech Ozone:
+#     oz_o3, oz_t, oz_p, oz_flow_a, oz_flow_b
+# Maycomm: 
+#     w_H2O_sh, w_H2O_B, w_H2O_lg, w_H2O_CD, w_p, w_t, w_t_elec, 
+#     w_amp, w_pow, w_pos, w_zer, w_posB
+
+windows:
+    win1:
+        name: 'Cell Pressure'
+        left_y: ['d1_P_mbars', 'd2_P_mbars']
+    
+    win2:
+        name: 'Mole Fractions'
+        left_y: ['d1_N2O_ppm', 'd2_N2O_ppm']
+        right_y: ['d1_H2O_ppm', 'd2_H2O_ppm']

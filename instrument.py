@@ -1,20 +1,22 @@
 #! /usr/bin/env python
 
-import pandas as pd
-from datetime import datetime
-import time
 import os
-from pathlib import Path
-from argparse import ArgumentParser
-import yaml
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtCore import QTimer
+import time
+from argparse import ArgumentParser
+from datetime import datetime
+from pathlib import Path
 
-from display_panel import DisplayPanel
+import pandas as pd
+import yaml
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication, QMainWindow
+
 from aeris import Aeris
-from o3_sensor import O3_2Btech
+from display_panel import DisplayPanel
 from h2o_sensor import Maycomm
+from o3_sensor import O3_2Btech
+
 config_file = Path('config.yaml')
 
 def load_config(file_path='config.yaml'):
@@ -137,7 +139,6 @@ class TDL_package(QMainWindow):
             self.display_panel.update_display_data('h2o', data_4[-1])
         except IndexError:
             pass
-
 
         # Merge the data streams and save to CSV
         if not self.stream1.empty and not self.stream2.empty:

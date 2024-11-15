@@ -1,8 +1,10 @@
 #! /usr/bin/env python
 
+import argparse
 import sys
 from pathlib import Path
 import pandas as pd
+import yaml
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QGridLayout,
     QComboBox, QFileDialog, QHBoxLayout, QCheckBox, QSizePolicy
@@ -15,19 +17,24 @@ import matplotlib.dates as mdates
 
 
 class CSVPlotter(QMainWindow):
-    def __init__(self):
+    def __init__(self, win_name=None, left_y_vars=None, right_y_vars=None, offset=0):
         super().__init__()
         self.open_windows = []  # List to store references to open windows
+        self.win_name = win_name  # CSVPlotter window name text
+        self.left_y_vars = left_y_vars or []  # Variables for the left Y-axis
+        self.right_y_vars = right_y_vars or []  # Variables for the right Y-axis
+        self.offset = offset
 
         # background colors
         self.c_background = "oldlace"
-        self.c_buttons = "khaki"
+        self.c_loadbutton = "khaki"
+        self.c_plotbutton = "lightgreen"
         self.c_statsline = "mistyrose"
         self.c_toolbar = "goldenrod"
         self.c_filetext = "dimgrey"
 
-        self.setWindowTitle("CSV Plotter")
-        self.setGeometry(200, 150, 900, 700)    # upper left coord. then w and h
+        self.setWindowTitle(self.win_name)
+        self.setGeometry(200+self.offset, 150+self.offset, 900, 700)    # upper left coord. then w and h
         self.setStyleSheet(f"font-size: 14px; background-color: {self.c_background};")
 
         # Main widget and layout
@@ -62,11 +69,11 @@ class CSVPlotter(QMainWindow):
 
         # Buttons for loading data and plotting
         self.load_button = QPushButton("Load CSV")
-        self.load_button.setStyleSheet(f"padding: 8px; margin-right: 5px; background-color: {self.c_buttons}; ")
+        self.load_button.setStyleSheet(f"padding: 8px; margin-right: 5px; background-color: {self.c_loadbutton}; ")
         self.plot_button = QPushButton("Refresh Plot")
-        self.plot_button.setStyleSheet(f"padding: 8px; background-color: {self.c_buttons}")
+        self.plot_button.setStyleSheet(f"padding: 8px; background-color: {self.c_plotbutton}")
         self.new_plot_button = QPushButton("New Plot", self)
-        self.new_plot_button.setStyleSheet(f"padding: 8px; background-color: {self.c_buttons}")
+        self.new_plot_button.setStyleSheet(f"padding: 8px; background-color: {self.c_loadbutton}")
 
         # Create a label to display the loaded CSV file name
         self.csv_file_label = QLabel("No file loaded")
@@ -131,7 +138,7 @@ class CSVPlotter(QMainWindow):
         self.new_csv_file = False
         self.load_button.clicked.connect(self.select_new_file)
         self.plot_button.clicked.connect(self.plot_data)
-        self.new_plot_button.clicked.connect(self.open_new_plot_window)
+        self.new_plot_button.clicked.connect(lambda: self.open_new_plot_window([self.left_y_vars[0]]))
         
         # Timer for periodic updates
         self.update_interval = 1000  # Update every 1000 milliseconds (1 seconds)
@@ -143,11 +150,30 @@ class CSVPlotter(QMainWindow):
 
         # Automatically load the most recent tdl-*.csv file on startup
         self.load_csv_data()
+
+        # Plot variables passed to the instance
+        variable_1 = self.left_y_vars[0] if len(self.left_y_vars) > 0 else ""
+        variable_2 = self.left_y_vars[1] if len(self.left_y_vars) > 1 else ""
+        variable_3 = self.right_y_vars[0] if len(self.right_y_vars) > 0 else ""
+        variable_4 = self.right_y_vars[1] if len(self.right_y_vars) > 1 else ""
+
+        # Set variables in pull downs
+        self.variable_combo_1.setCurrentText(variable_1)
+        self.variable_combo_2.setCurrentText(variable_2)
+        self.variable_combo_3.setCurrentText(variable_3)
+        self.variable_combo_4.setCurrentText(variable_4)
+
         self.plot_data()
 
-    def open_new_plot_window(self):
+    def load_config(self, file_path=None):
+        """Load the configuration from a YAML file."""
+        file_path = file_path or self.config_path
+        with open(file_path, 'r') as file:
+            return yaml.safe_load(file)
+
+    def open_new_plot_window(self, left_y=None):
         # Open a new plot window instance
-        new_window = CSVPlotter()
+        new_window = CSVPlotter(left_y_vars=left_y)
         new_window.show()
         self.open_windows.append(new_window)  # Keep a reference to prevent garbage collection
 
@@ -301,10 +327,6 @@ class CSVPlotter(QMainWindow):
                 self.variable_combo_3.addItems([""] + columns)
                 self.variable_combo_4.addItems([""] + columns)
 
-                # Automatically select the first variable if available
-                if columns:
-                    self.variable_combo_1.setCurrentIndex(1)  # Index 1 because index 0 is an empty string
-
             self.csv_file_label.setText(f"Loaded file: {Path(file_path).name} - {len(self.data)} rows")
         else:
             pass
@@ -396,10 +418,42 @@ class CSVPlotter(QMainWindow):
         self.canvas.draw()
         
 def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="CSV Plotter Application")
+    parser.add_argument(
+        "-c", "--config",
+        type=str,
+        default="plot-config.yaml",
+        help="Path to the configuration file (default: plot-config.yaml)"
+    )
+    args = parser.parse_args()
+
+    # Load the configuration file
+    try:
+        with open(args.config, 'r') as file:
+            config = yaml.safe_load(file)
+    except FileNotFoundError:
+        print(f"Configuration file not found: {args.config}")
+        sys.exit(1)
+
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
-    window = CSVPlotter()
-    window.show()
+
+    # Open windows as defined in the config
+    windows = []
+    for index, (win_key, win_config) in enumerate(config.get('windows', {}).items()):
+        name = win_config.get('name')
+        left_y_vars = win_config.get('left_y', [])
+        right_y_vars = win_config.get('right_y', [])
+        window = CSVPlotter(
+            win_name=name,
+            left_y_vars=left_y_vars,
+            right_y_vars=right_y_vars,
+            offset=index * 20
+        )
+        window.show()
+        windows.append(window)  # Keep references to prevent garbage collection
+
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
