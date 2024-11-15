@@ -29,7 +29,7 @@ devices:
 
   h2o:
     serial_port: /dev/ttyUSB1
-    sim_mode: false
+    sim_mode: true
     data_var_prefix: w_
     display_vars:
       - H2O_sh
