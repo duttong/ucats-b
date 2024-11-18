@@ -10,7 +10,7 @@ class TSeriesLabJack:
     def __init__(self):
         self.handle = self.connect_labjack()
 
-    def connect_labjack(self):
+    def connect(self):
         """Connects to a LabJack T-Series device."""
         try:
             handle = ljm.open(ljm.constants.dtANY, ljm.constants.ctANY, "ANY")

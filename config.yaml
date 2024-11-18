@@ -1,4 +1,9 @@
 devices:
+  labjack:
+    serial_port: /dev/ttyUSB4
+    sim_mode: true
+    data_var_prefix: j_
+    
   aeris1:
     serial_port: /dev/ttyUSB3
     sim_mode: true
