@@ -34,7 +34,7 @@ class CSVPlotter(QMainWindow):
         self.c_filetext = "dimgrey"
 
         self.setWindowTitle(self.win_name)
-        self.setGeometry(200+self.offset, 150+self.offset, 900, 700)    # upper left coord. then w and h
+        self.setGeometry(50+self.offset, 50+self.offset, 900, 700)    # upper left coord. then w and h
         self.setStyleSheet(f"font-size: 14px; background-color: {self.c_background};")
 
         # Main widget and layout
@@ -164,12 +164,6 @@ class CSVPlotter(QMainWindow):
         self.variable_combo_4.setCurrentText(variable_4)
 
         self.plot_data()
-
-    def load_config(self, file_path=None):
-        """Load the configuration from a YAML file."""
-        file_path = file_path or self.config_path
-        with open(file_path, 'r') as file:
-            return yaml.safe_load(file)
 
     def open_new_plot_window(self, left_y=None):
         # Open a new plot window instance
@@ -423,8 +417,8 @@ def main():
     parser.add_argument(
         "-c", "--config",
         type=str,
-        default="plot-config.yaml",
-        help="Path to the configuration file (default: plot-config.yaml)"
+        default="config-plot.yaml",
+        help="Path to the configuration file (default: config-plot.yaml)"
     )
     args = parser.parse_args()
 
