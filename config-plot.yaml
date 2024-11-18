@@ -19,6 +19,9 @@
 # Maycomm: 
 #     w_H2O_sh, w_H2O_B, w_H2O_lg, w_H2O_CD, w_p, w_t, w_t_elec, 
 #     w_amp, w_pow, w_pos, w_zer, w_posB
+#
+##### To add additional plot windows, add a win# definition below with left and right axis
+# variables. The code is currently limited to two variables per axis.
 
 windows:
     win1:
