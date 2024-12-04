@@ -1,0 +1,19 @@
+# Labjack control
+# UCATS-B uses a T4 Labjack with 12 DIO, 4 A2D, and 2 DAC lines.
+# Digital I/O are on lines FIO0-FIO3, EIO0-EIO3, and CIO0-CIO3
+# Analog Input are on lines AIN0-AIN3
+# There are two 0-5V DACs addressed via DAC0 and DAC1
+
+report:
+  freq: 2  # seconds
+  addresses:
+    # Analog Input Configuration
+    analog:
+      0:
+        cal: [0, 1]  # Example calibration range
+      1:
+        cal: [0, 1]
+    # Digital Input/Output Configuration
+    digital:
+      EIO0: null  # Replace 'null' with configuration details
+      EIO1: null

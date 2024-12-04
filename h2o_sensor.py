@@ -35,7 +35,7 @@ class Maycomm:
     def connect(self):
         """Establish the serial connection to the Maycomm Water Vapor analyzer or enter test mode."""
         if self.sim_mode:
-            print("Running in simulate mode. Simulating data.")
+            print("Maycomm running in simulate mode.")
         else:
             try:
                 self.ser = serial.Serial(

@@ -65,10 +65,11 @@ class TDL_package(QMainWindow):
                 )
             elif device_name.lower() == 'labjack':
                 device = TSeriesLabJack(
-                    prefix=device_config['data_var_prefix']
+                    prefix=device_config['data_var_prefix'],
+                    sim_mode=device_config['sim_mode']
                 )
             else:
-                raise ValueError(f"Unknown device type: {device_config['type']}")
+                raise ValueError(f"Unknown device type: {device_name}")
             
             # Connect device and initialize stream
             device.connect()

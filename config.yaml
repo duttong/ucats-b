@@ -22,7 +22,7 @@ devices:
       - Ramp_Ampl
       - N2O_ppm
 
-  ozone:
+  o3_sensor:
     serial_port: /dev/ttyUSB0
     sim_mode: true
     data_var_prefix: oz_
@@ -31,7 +31,7 @@ devices:
       - p
       - o3
 
-  h2o:
+  h2o_sensor:
     serial_port: /dev/ttyUSB1
     sim_mode: true
     data_var_prefix: w_

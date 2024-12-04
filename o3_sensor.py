@@ -35,7 +35,7 @@ class O3_2Btech:
     def connect(self):
         """Establish the serial connection to the 2Btech ozone analyzer or enter test mode."""
         if self.sim_mode:
-            print("Running in simulate mode. Simulating data.")
+            print("2Btech Ozone sensor running in simulate mode.")
         else:
             try:
                 self.ser = serial.Serial(
