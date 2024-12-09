@@ -45,27 +45,26 @@ class TDL_package(QMainWindow):
         # Create instances for sensors on different ports (as in the original code)
         # Initialize devices dynamically from config
         for device_name, device_config in self.config['devices'].items():
-            if device_config['type'] == 'aeris':
+            if device_name.lower().startswith('aeris'):
                 device = Aeris(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
-            elif device_config['type'] == 'o3_sensor':
+            elif device_name.lower() == 'o3_sensor':
                 device = O3_2Btech(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
-            elif device_config['type'] == 'h2o_sensor':
+            elif device_name.lower() == 'h2o_sensor':
                 device = Maycomm(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
-            elif device_config['type'] == 'labjack':
+            elif device_name.lower() == 'labjack':
                 device = TSeriesLabJack(
-                    port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix']
                 )
             else:

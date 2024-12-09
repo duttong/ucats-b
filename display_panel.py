@@ -31,6 +31,10 @@ class DisplayPanel(QWidget):
 
         row = 0
         for device_name, device_info in config['devices'].items():
+            # Skip the device if 'display_vars' is empty or missing
+            if not device_info.get('display_vars'):
+                continue
+
             # Device label with larger font and bold style
             device_label = QLabel(f"Device: {device_name}")
             device_label.setFont(QFont('Arial', 16, QFont.Bold))  # Larger, bold font

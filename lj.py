@@ -7,8 +7,9 @@ from labjack import ljm
 
 class TSeriesLabJack:
     """ A simple class for interfacing with T4, T7, and T8 Labjack devices. """
-    def __init__(self):
-        self.handle = self.connect_labjack()
+    def __init__(self, prefix=None, sim_mode=False):
+        if sim_mode == False:
+            self.handle = self.connect()
 
     def connect(self):
         """Connects to a LabJack T-Series device."""

@@ -1,6 +1,5 @@
 devices:
   labjack:
-    serial_port: /dev/ttyUSB4
     sim_mode: true
     data_var_prefix: j_
     
