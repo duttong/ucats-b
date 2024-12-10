@@ -8,11 +8,12 @@ report:
   freq: 2  # seconds
   addresses:
     # Analog Input Configuration
+    # The list of numbers in cal are coefficients for a polynomial.
     analog:
       0:
-        cal: [0, 1]  # Example calibration range
+        cal: [0, 1]  
       1:
-        cal: [0, 1]
+        cal: [0, 10, 2]
     # Digital Input/Output Configuration
     digital:
       EIO0: null  # Replace 'null' with configuration details
