@@ -30,10 +30,21 @@ class LabJackController:
 
     def _initialize_labjack(self):
         handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if different.
+        self._set_states(handle)
         print(f"LabJack initialized with handle: {handle}")
         return handle
+    
+    def _set_states(self, handle):
+        """ Initialization of the labjack state. """
+        # Disable any extended features on FIO7 and FIO6
+        ljm.eWriteName(handle, "DIO7_EF_ENABLE", 0)  # Disable extended features for FIO7
+        ljm.eWriteName(handle, "DIO6_EF_ENABLE", 0)  # Disable extended features for FIO6
 
-    def _read_analog(self):
+        # Set FIO7 and FIO6 as digital outputs and initial state to LOW
+        ljm.eWriteName(handle, "FIO7", 0)
+        ljm.eWriteName(handle, "FIO6", 0)
+
+    def read_analog(self):
         analog_readings = {}
         for channel, cal in self.addresses.get("analog", {}).items():
             cal = cal['cal']
@@ -47,18 +58,33 @@ class LabJackController:
             analog_readings[f"AIN{channel}"] = value
         return analog_readings
 
-    def _read_digital(self):
+    def read_digital(self):
         digital_readings = {}
         for line in self.addresses.get("digital", {}):
             value = ljm.eReadName(self.handle, line)
             digital_readings[line] = value
         return digital_readings
+    
+    def write_digital(self, digital_writes):
+        """
+        Writes to the digital pins specified in the digital_writes dictionary.
+        
+        Args:
+            digital_writes (dict): A dictionary where keys are pin names (e.g., "FIO0") 
+                                and values are 0 (LOW) or 1 (HIGH).
+        """
+        for line, value in digital_writes.items():
+            if value not in [0, 1]:
+                raise ValueError(f"Invalid value for digital write on {line}: {value}. Must be 0 or 1.")
+            
+            # Write the specified value to the digital line
+            ljm.eWriteName(self.handle, line, value)
 
     def _collect_data(self):
         while self.is_collecting:
             try:
-                analog_readings = self._read_analog()
-                digital_readings = self._read_digital()
+                analog_readings = self.read_analog()
+                digital_readings = self.read_digital()
 
                 with self.lock:
                     print("Analog:", analog_readings)
@@ -94,7 +120,7 @@ class LabJackController:
         """Toggle a digital line high for one second, then low."""
         print(f"Toggling digital line {line} HIGH for 1 second...")
         ljm.eWriteName(self.handle, line, 1)  # Set the line HIGH
-        time.sleep(1)
+        time.sleep(2)
         ljm.eWriteName(self.handle, line, 0)  # Set the line LOW
         print(f"Digital line {line} toggled LOW.")
 

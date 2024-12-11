@@ -5,6 +5,7 @@
 # There are two 0-5V DACs addressed via DAC0 and DAC1
 
 report:
+  # report is used for data read and recored from the labjack
   freq: 2  # seconds
   addresses:
     # Analog Input Configuration
@@ -14,7 +15,7 @@ report:
         cal: [0, 1]  
       1:
         cal: [0, 10, 2]
-    # Digital Input/Output Configuration
     digital:
-      EIO0: null  # Replace 'null' with configuration details
-      EIO1: null
+      # Digital Input/Output Configuration
+      EIO0: 
+      EIO1: 
