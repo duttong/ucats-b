@@ -2,33 +2,25 @@
 
 import os
 import sys
-import time
 from argparse import ArgumentParser
 from datetime import datetime
-from pathlib import Path
-
 import pandas as pd
 import yaml
+
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
-from lj import TSeriesLabJack
+from lj import LabJackController
 from aeris import Aeris
 from display_panel import DisplayPanel
 from h2o_sensor import Maycomm
 from o3_sensor import O3_2Btech
 
-config_file = Path('config.yaml')
-
-def load_config(file_path='config.yaml'):
-    """ Load the configuration from a YAML file """
-    with open(file_path, 'r') as file:
-        return yaml.safe_load(file)
 
 class TDL_package(QMainWindow):
-    def __init__(self, stream_size=100):
+    def __init__(self, config_file='config.yaml', stream_size=100):
         super().__init__()
-        self.config = load_config(config_file)
+        self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
 
         # Initialize the display panel
@@ -64,7 +56,8 @@ class TDL_package(QMainWindow):
                     sim_mode=device_config['sim_mode']
                 )
             elif device_name.lower() == 'labjack':
-                device = TSeriesLabJack(
+                device = LabJackController(
+                    config_file=device_config['table'],
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
@@ -88,6 +81,11 @@ class TDL_package(QMainWindow):
         else:
             self.last_saved_datetime = None
 
+    def load_config(self, file_path='config.yaml'):
+        """ Load the configuration from a YAML file """
+        with open(file_path, 'r') as file:
+            return yaml.safe_load(file)
+    
     def create_filename(self, prefix="tdl"):
         # Get the current date and hour
         current_time = datetime.now()
@@ -157,6 +155,7 @@ class TDL_package(QMainWindow):
 def main():
     # Create the argument parser
     parser = ArgumentParser(description="Run TDL Package for data collection.")
+    parser.add_argument("--config", type=str, default='config.yaml', help="Path to the configuration YAML file. (default=config.yaml)")
     parser.add_argument('-t', '--time', type=int, help="Duration to run the data collection (in seconds).", default=None)
 
     # Parse the arguments
@@ -165,7 +164,7 @@ def main():
     app = QApplication(sys.argv)
 
     # Create the TDL_package instance with the provided stream size
-    package = TDL_package()
+    package = TDL_package(config_file=args.config)
     package.show()
 
      # Start the data collection with the specified duration

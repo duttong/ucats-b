@@ -1,5 +1,6 @@
 devices:
   labjack:
+    table: labjack.yaml
     sim_mode: true
     data_var_prefix: j_
     
