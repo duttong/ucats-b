@@ -1,6 +1,8 @@
+import sys
+import time
 import yaml
 import datetime
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGridLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGridLayout, QApplication
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import Qt
 
@@ -76,3 +78,10 @@ class DisplayPanel(QWidget):
             label_key = f"{device_name}_{var_name}"
             if label_key in self.data_labels:
                 self.data_labels[label_key].setText(str(var_value))
+
+if __name__ == "__main__":
+
+    app = QApplication(sys.argv)
+    panel = DisplayPanel('config.yaml')
+    panel.show()
+    sys.exit(app.exec_())

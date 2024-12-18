@@ -1,12 +1,12 @@
 #! /usr/bin/env python
 
 import argparse
-from pathlib import Path
 import time
 from datetime import datetime
 import numpy as np
 import yaml
 import threading
+import random
 from labjack import ljm
 
 
@@ -34,10 +34,13 @@ class LabJackController:
         self._initialize_labjack()
 
     def _initialize_labjack(self):
-        handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if different.
-        self._set_states(handle)
-        print(f"LabJack initialized with handle: {handle}")
-        return handle
+        if self.sim_mode:
+            print("Simulating Labjack communications.")
+        else:
+            handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if different.
+            self._set_states(handle)
+            print(f"LabJack initialized with handle: {handle}")
+            return handle
     
     def _set_states(self, handle):
         """ Initialization of the labjack state. """
@@ -88,8 +91,10 @@ class LabJackController:
             if value not in [0, 1]:
                 raise ValueError(f"Invalid value for digital write on {line}: {value}. Must be 0 or 1.")
             
-            # Write the specified value to the digital line
-            ljm.eWriteName(self.handle, line, value)
+            with self.lock:
+                # Write the specified value to the digital line
+                #print(f'{line} = {value}')
+                ljm.eWriteName(self.handle, line, value)
 
     def _collect_data(self):
         while self.is_collecting:
@@ -108,6 +113,18 @@ class LabJackController:
             except Exception as e:
                 print(f"Error during data collection in lj.py: {e}")
 
+    def _simulate_test_data(self):
+         while self.is_collecting:
+            current_datetime = {'datetime': datetime.now().replace(microsecond=0)}
+            p = round(random.uniform(950, 1050), 1)
+            t = round(random.uniform(20, 30), 1)
+            analog = {f'{self.prefix}sim_p': p, f'{self.prefix}sim_t': t}
+            data = current_datetime | analog
+            self.data_buffer.append(data)
+            if self.verbose:
+                print(data)
+            time.sleep(1.0)
+
     def start_data_collection(self):
         """Start data collection in a separate thread."""
         if self.is_collecting:
@@ -115,7 +132,10 @@ class LabJackController:
             return
 
         self.is_collecting = True
-        threading.Thread(target=self._collect_data, daemon=True).start()
+        if self.sim_mode:
+            threading.Thread(target=self._simulate_test_data, daemon=True).start()
+        else:
+            threading.Thread(target=self._collect_data, daemon=True).start()
 
     def stop_data_collection(self):
         """Stop the data collection."""
@@ -133,14 +153,13 @@ class LabJackController:
             self.data_buffer.clear()  # Clear the buffer after returning the data
         return data_copy
 
-    def _cleanup(self):
-        self.stop_data_collection()
-        ljm.close(self.handle)
-        print("LabJack connection closed.")
-
     def disconnect(self):
-        # used by instrument.py
-        self._cleanup()
+        self.stop_data_collection()
+        if self.sim_mode:
+            print("Labjack simulation stopped.")
+        else:
+            ljm.close(self.handle)
+            print("LabJack connection closed.")
 
     def toggle_digital(self, line):
         """Toggle a digital line high for one second, then low."""
@@ -160,7 +179,7 @@ class LabJackController:
         except KeyboardInterrupt:
             print("Data collection interrupted by user.")
         finally:
-            self._cleanup()
+            self.disconnect()
 
 
 def main():

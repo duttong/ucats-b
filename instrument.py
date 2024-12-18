@@ -2,8 +2,10 @@
 
 import os
 import sys
+import time
 from argparse import ArgumentParser
 from datetime import datetime
+import threading
 import pandas as pd
 import yaml
 
@@ -22,6 +24,7 @@ class TDL_package(QMainWindow):
         super().__init__()
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
+        self.pilot_add = ''     # read from config.yaml
 
         # Initialize the display panel
         self.setWindowTitle("UCATS-B")
@@ -61,6 +64,7 @@ class TDL_package(QMainWindow):
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
+                self.pilot_add = device_config['pilot']
             else:
                 raise ValueError(f"Unknown device type: {device_name}")
             
@@ -80,6 +84,9 @@ class TDL_package(QMainWindow):
             del previous_data  # remove from memory
         else:
             self.last_saved_datetime = None
+
+        # start pilot light
+        threading.Thread(target=self.pilot_light, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -151,6 +158,22 @@ class TDL_package(QMainWindow):
             device.stop_data_collection()
             device.disconnect()
         print("Data collection stopped.")
+
+    def pilot_light(self, cycle=1):
+        jack = self.devices["labjack"]
+        while True:
+            jack.write_digital({self.pilot_add: 0})
+            time.sleep(cycle)
+            jack.write_digital({self.pilot_add: 1})
+            time.sleep(cycle)
+
+    # pressure checks
+    def at_altitude(self):
+        pass
+
+    def below_altitude(self):
+        pass
+
 
 def main():
     # Create the argument parser
