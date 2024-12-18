@@ -54,7 +54,7 @@ class O3_2Btech:
     def disconnect(self):
         """Close the serial connection."""
         if self.sim_mode:
-            print("Test mode ended.")
+            print("O3 Test mode ended.")
         elif self.ser and self.ser.is_open:
             self.ser.close()
             print("Disconnected from 2Btech device.")

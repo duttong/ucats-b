@@ -54,7 +54,7 @@ class Maycomm:
     def disconnect(self):
         """Close the serial connection."""
         if self.sim_mode:
-            print("Test mode ended.")
+            print("H2O test mode ended.")
         elif self.ser and self.ser.is_open:
             self.ser.close()
             print("Disconnected from Maycomm device.")
