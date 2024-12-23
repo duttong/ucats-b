@@ -25,6 +25,12 @@ class TDL_package(QMainWindow):
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
         self.pilot_add = ''     # read from config.yaml
+        self.sol_cal_add = ''
+        self.sol_cal = 0
+        self.pressure_var = ''
+        self.pressure = 1200
+        self.stop_event = threading.Event()
+        self.extra_vars = {'sol_cal': self.sol_cal}       # extra variables for the .csv file.
 
         # Initialize the display panel
         self.setWindowTitle("UCATS-B")
@@ -65,6 +71,8 @@ class TDL_package(QMainWindow):
                     sim_mode=device_config['sim_mode']
                 )
                 self.pilot_add = device_config['pilot']
+                self.sol_cal_add = device_config['sol_cal']
+                self.pressure_var = f'{device_config["data_var_prefix"]}amb_press'
             else:
                 raise ValueError(f"Unknown device type: {device_name}")
             
@@ -72,6 +80,13 @@ class TDL_package(QMainWindow):
             device.connect()
             self.devices[device_name] = device
             self.streams[device_name] = pd.DataFrame()
+
+        # load pressure trigger points
+        for event, value in self.config['triggers'].items():
+            if event == 'pump_on':
+                self.pump_on = value
+            elif event == 'pump_off':
+                self.pump_off = value
         
         # Timer for periodic data collection
         self.timer = QTimer()
@@ -85,8 +100,9 @@ class TDL_package(QMainWindow):
         else:
             self.last_saved_datetime = None
 
-        # start pilot light
+        # start pilot light and pressure triggers
         threading.Thread(target=self.pilot_light, daemon=True).start()
+        threading.Thread(target=self.altitude_monitor, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -123,6 +139,10 @@ class TDL_package(QMainWindow):
 
                 # Update the display panel with the latest data
                 self.display_panel.update_display_data(device_name, data[-1])
+
+                # update the ambient pressure variable
+                if device_name == 'labjack':
+                    self.pressure = data[0][self.pressure_var]
             except IndexError:
                 pass
 
@@ -168,12 +188,43 @@ class TDL_package(QMainWindow):
             time.sleep(cycle)
 
     # pressure checks
+    def altitude_monitor(self):
+        time.sleep(5)   # wait a little to let everything startup
+        while True:
+            if self.pressure <= self.pump_on:  # Takeoff or ascending condition
+                if not self.stop_event.is_set():
+                    self.at_altitude()
+            
+            if self.pressure > self.pump_off:  # Landing or descending condition
+                if not self.stop_event.is_set():
+                    self.below_altitude()
+            
+            time.sleep(1)  # Polling interval
+
     def at_altitude(self):
-        pass
+        print("Plane has reached altitude.")
+        jack = self.devices["labjack"]
+        self.stop_event.clear()
+
+        # cycle the cal solenoid while at altitude
+        while not self.stop_event.is_set():
+            jack.write_digital({self.sol_cal_add: 1})
+            self.extra_vars['sol_cal'] = 1
+            if self.stop_event.wait(100):
+                break
+            jack.write_digital({self.sol_cal_add: 0})
+            self.extra_vars['sol_cal'] = 0
+            if self.stop_event.wait(100):
+                break
+        print("Exiting cruising altitude actions.")
 
     def below_altitude(self):
-        pass
-
+        print("Plane is descending.")
+        jack = self.devices["labjack"]
+        self.stop_event.set()
+        # Perform actions during descent or post-landing
+        jack.write_digital({self.sol_cal_add: 0})
+        self.extra_vars['sol_cal'] = 0
 
 def main():
     # Create the argument parser

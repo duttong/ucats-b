@@ -1,9 +1,17 @@
+triggers:
+  pump_on: 700    # less than this mbar
+  pump_off: 800   # greater than this mbar
+
 devices:
   labjack:
     table: labjack.yaml
-    sim_mode: false
+    sim_mode: true
     data_var_prefix: j_     # leave blank for no prefix
     pilot: 'FIO7'           # pilot light dig line
+    sol_cal: 'FIO6'         # solenoid for cal or air
+    display_vars:
+      - amb_press
+      - temp1
     
   aeris1:
     serial_port: /dev/ttyUSB3

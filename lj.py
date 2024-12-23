@@ -91,10 +91,11 @@ class LabJackController:
             if value not in [0, 1]:
                 raise ValueError(f"Invalid value for digital write on {line}: {value}. Must be 0 or 1.")
             
-            with self.lock:
-                # Write the specified value to the digital line
-                #print(f'{line} = {value}')
-                ljm.eWriteName(self.handle, line, value)
+            if not self.sim_mode:
+                with self.lock:
+                    # Write the specified value to the digital line
+                    #print(f'{line} = {value}')
+                    ljm.eWriteName(self.handle, line, value)
 
     def _collect_data(self):
         while self.is_collecting:
@@ -118,7 +119,7 @@ class LabJackController:
             current_datetime = {'datetime': datetime.now().replace(microsecond=0)}
             p = round(random.uniform(950, 1050), 1)
             t = round(random.uniform(20, 30), 1)
-            analog = {f'{self.prefix}sim_p': p, f'{self.prefix}sim_t': t}
+            analog = {f'{self.prefix}amb_press': p, f'{self.prefix}temp1': t}
             data = current_datetime | analog
             self.data_buffer.append(data)
             if self.verbose:

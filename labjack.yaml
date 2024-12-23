@@ -17,6 +17,9 @@ report:
       1:
         var: 'pump_speed'
         cal: [0, 10, 2]
+      2:
+        var: 'temp1'
+        cal: [0, 1]
     digital:
       # Digital Input/Output Configuration
       EIO0:
