@@ -2,15 +2,22 @@ import sys
 import time
 import yaml
 import datetime
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGridLayout, QApplication
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QGridLayout, QApplication
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import Qt
 
 class DisplayPanel(QWidget):
-    def __init__(self, config_file):
+    def __init__(self, config_file, devices=None):
         super().__init__()
         self.config_file = config_file
+        self.config = self.load_config(config_file)
+        self.devices = devices
         self.initUI()
+
+    def load_config(self, file_path='config.yaml'):
+        """ Load the configuration from a YAML file """
+        with open(file_path, 'r') as file:
+            return yaml.safe_load(file)
 
     def initUI(self):
         layout = QVBoxLayout()
@@ -30,17 +37,13 @@ class DisplayPanel(QWidget):
         layout.addWidget(self.press_label)
         """
         
-        # Load and display variables from the config file
-        with open(self.config_file, 'r') as file:
-            config = yaml.safe_load(file)
-
         self.data_labels = {}  # Store labels to update later
 
         grid = QGridLayout()
         grid.setSpacing(10)  # Adjust spacing between rows
 
         row = 0
-        for device_name, device_info in config['devices'].items():
+        for device_name, device_info in self.config['devices'].items():
             # Skip the device if 'display_vars' is empty or missing
             if not device_info.get('display_vars'):
                 continue
@@ -52,7 +55,7 @@ class DisplayPanel(QWidget):
             grid.addWidget(device_label, row, 0, 1, 2)  # Span across 2 columns
             row += 1
 
-            prefix = config['devices'][device_name]['data_var_prefix']
+            prefix = self.config['devices'][device_name]['data_var_prefix']
 
             # For each display variable, add a QLabel for both the name and the value
             for var in device_info['display_vars']:
@@ -71,6 +74,13 @@ class DisplayPanel(QWidget):
                 row += 1
 
         layout.addLayout(grid)
+        self.co2_reboot_button = QPushButton("Aeris CO2 Reboot")
+        self.co2_reboot_button.clicked.connect(self.aeris_co2_reboot)
+        layout.addWidget(self.co2_reboot_button)
+
+        self.co_reboot_button = QPushButton("Aeris CO Reboot")
+        self.co_reboot_button.clicked.connect(self.aeris_co_reboot)
+        layout.addWidget(self.co_reboot_button)
         self.setLayout(layout)
 
     def update_time(self, data):
@@ -86,6 +96,33 @@ class DisplayPanel(QWidget):
             label_key = f"{device_name}_{var_name}"
             if label_key in self.data_labels:
                 self.data_labels[label_key].setText(str(var_value))
+
+    # Entry function for Aeris CO2 Reboot button
+    def aeris_co2_reboot(self):
+        try:
+            aeris_device = self.devices.get('aeris_CO2')
+        except AttributeError:
+            print("This is a display demo, there are no active devices.")
+            return
+        if aeris_device:
+            aeris_device.send_command('reboot')
+            print("Aeris CO2 Reboot command sent!")
+        else:
+            print("Aeris CO2 device not found!")
+
+    # Entry function for Aeris CO Reboot button
+    def aeris_co_reboot(self):
+        try:
+            aeris_device = self.devices.get('aeris_CO')
+        except AttributeError:
+            print("This is a display demo, there are no active devices.")
+            return
+        if aeris_device:
+            aeris_device.send_command('reboot')
+            print("Aeris CO Reboot command sent!")
+        else:
+            print("Aeris CO device not found!")
+
 
 if __name__ == "__main__":
 

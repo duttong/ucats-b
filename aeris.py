@@ -102,8 +102,8 @@ class Aeris:
                         self.data_buffer.append(parsed_data)
                     
                 if self.verbose:
-                    data = data.replace('\n', '')
-                    print(f"Raw data: {data}")
+                    pass
+                    #print(f"Raw data: {data.replace('\n', '')}")
             except Exception as e:
                 print(f"Error during data collection: {e}")
             time.sleep(0.5)  # Adjust the interval if needed
@@ -115,7 +115,8 @@ class Aeris:
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
-                print(f"Test data: {parsed_data}")
+                pass
+                #print(f"Test data: {parsed_data}")
             time.sleep(1)  # Simulate data every 1 second
 
     def send_command(self, command):

@@ -5,7 +5,7 @@
 # There are two 0-5V DACs addressed via DAC0 and DAC1
 
 report:
-  # report is used for data read and recored from the labjack
+  # report is used for data read and record from the labjack
   freq: 2  # seconds
   addresses:
     # Analog Input Configuration

@@ -20,8 +20,9 @@ from o3_sensor import O3_2Btech
 
 
 class TDL_package(QMainWindow):
-    def __init__(self, config_file='config.yaml', stream_size=100):
+    def __init__(self, config_file='config.yaml', stream_size=100, verbose=False):
         super().__init__()
+        self.verbose = verbose
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
         self.pilot_add = ''     # read from config.yaml
@@ -32,11 +33,8 @@ class TDL_package(QMainWindow):
         self.stop_event = threading.Event()
         self.extra_vars = {'sol_cal': self.sol_cal}       # extra variables for the .csv file.
 
-        # Initialize the display panel
         self.setWindowTitle("UCATS-B")
         self.setGeometry(100, 100, 250, 350)
-        self.display_panel = DisplayPanel(config_file)
-        self.setCentralWidget(self.display_panel)
 
         # Stream size (number of rows to keep) and initialize empty streams
         self.stream_size = stream_size
@@ -46,11 +44,12 @@ class TDL_package(QMainWindow):
         # Create instances for sensors on different ports (as in the original code)
         # Initialize devices dynamically from config
         for device_name, device_config in self.config['devices'].items():
-            if device_name.lower().startswith('aeris'):
+            if 'aeris' in device_name.lower():
                 device = Aeris(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
-                    sim_mode=device_config['sim_mode']
+                    sim_mode=device_config['sim_mode'],
+                    verbose=self.verbose
                 )
             elif device_name.lower() == 'o3_sensor':
                 device = O3_2Btech(
@@ -80,6 +79,10 @@ class TDL_package(QMainWindow):
             device.connect()
             self.devices[device_name] = device
             self.streams[device_name] = pd.DataFrame()
+
+            # Initialize the display panel
+            self.display_panel = DisplayPanel(config_file, self.devices)
+            self.setCentralWidget(self.display_panel)
 
         # load pressure trigger points
         for event, value in self.config['triggers'].items():
@@ -230,6 +233,7 @@ def main():
     # Create the argument parser
     parser = ArgumentParser(description="Run TDL Package for data collection.")
     parser.add_argument("--config", type=str, default='config.yaml', help="Path to the configuration YAML file. (default=config.yaml)")
+    parser.add_argument('-v', '--verbose', action='store_true', help="Prints some extra info to stdout.")
     parser.add_argument('-t', '--time', type=int, help="Duration to run the data collection (in seconds).", default=None)
 
     # Parse the arguments
@@ -238,7 +242,7 @@ def main():
     app = QApplication(sys.argv)
 
     # Create the TDL_package instance with the provided stream size
-    package = TDL_package(config_file=args.config)
+    package = TDL_package(config_file=args.config, verbose=args.verbose)
     package.show()
 
      # Start the data collection with the specified duration

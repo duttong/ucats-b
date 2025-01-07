@@ -7,13 +7,20 @@ devices:
     table: labjack.yaml
     sim_mode: true
     data_var_prefix: j_     # leave blank for no prefix
-    pilot: 'FIO7'           # pilot light dig line
-    sol_cal: 'FIO6'         # solenoid for cal or air
+    pilot: 'FIO6'           # pilot watchdog
+    pilotswitch: 'FIO7'     # pilot on/off switch
+    sol_cal: 'CIO1'         # solenoid for cal1 or cal2
+    sol_aircal: 'CIO2'      # solenoid for air or cal selection
+    pump_aeris: 'CIO3'
+    pump_o3: 'EIO0'
+    pump_h2o: 'EIO2'
+    power_aerisCO2: 'EIO4'
+    power_aerisCO: 'EIO6'
     display_vars:
       - amb_press
       - temp1
     
-  aeris1:
+  aeris_CO:
     serial_port: /dev/ttyUSB3
     sim_mode: true
     data_var_prefix: d1_
@@ -23,7 +30,7 @@ devices:
       - N2O_ppm
       - CO_ppm
 
-  aeris2:
+  aeris_CO2:
     serial_port: /dev/ttyUSB2
     sim_mode: true
     data_var_prefix: d2_
@@ -31,6 +38,7 @@ devices:
       - Det_Bkgd
       - Ramp_Ampl
       - N2O_ppm
+      - CO2_ppm
 
   o3_sensor:
     serial_port: /dev/ttyUSB0
