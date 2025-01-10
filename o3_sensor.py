@@ -9,6 +9,8 @@ import random
 
 class O3_2Btech:
 
+    sim_mode_count = 0     # counter for number of simulated data packets
+
     def __init__(self, port, baudrate=4800, timeout=1, sim_mode=False, verbose=False, prefix=None):
         """
         Initialize the 2Btech Ozone analyzer class with the device port and serial configuration.
@@ -155,9 +157,26 @@ class O3_2Btech:
     @staticmethod
     def generate_test_data():
         """Generate a test data packet with random values."""
+
+        O3_2Btech.sim_mode_count += 1
+
+        noise = random.uniform(-10, 10)
+
+        # Determine the pressure based on the read count
+        if O3_2Btech.sim_mode_count <= 10:  # First 10 reads: 1000 hPa
+            p = 1000 + noise
+        elif O3_2Btech.sim_mode_count <= 40:  # Next 30 reads: Ramp from 1000 to 400 hPa
+            p = 1000 - (600 / 30) * (O3_2Btech.sim_mode_count - 10) + noise
+        elif O3_2Btech.sim_mode_count <= 60:  # Next 20 reads: Stay at 400 hPa
+            p = 400 + noise
+        elif O3_2Btech.sim_mode_count <= 80:  # Next 20 reads: Ramp from 400 to 1000 hPa
+            p = 400 + (600 / 20) * (O3_2Btech.sim_mode_count - 60) + noise
+        else:  # Remaining reads: Stay at 1000 +/- 10 hPa
+            p = 1000 + noise
+        p = round(p, 2)
+
         o3 = round(random.uniform(0.01, 0.15), 3)  # Simulate O3 in ppm
         t = round(random.uniform(15.0, 35.0), 2)   # Simulate temperature in C
-        p = round(random.uniform(950, 1050), 1)    # Simulate pressure in hPa
         flow_a = round(random.uniform(0.5, 2.0), 2) # Simulate flow A
         flow_b = round(random.uniform(0.5, 2.0), 2) # Simulate flow B
                         
