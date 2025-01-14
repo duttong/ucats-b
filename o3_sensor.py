@@ -155,12 +155,10 @@ class O3_2Btech:
             print(f"Error parsing O3 packet. Data: {packet}. Error: {e}")
             return {}
     
-    @staticmethod
-    def generate_test_data():
+    def generate_test_data(self):
         """Generate a test data packet with random values."""
 
         O3_2Btech.sim_mode_count += 1
-
         noise = random.uniform(-10, 10)
 
         # Determine the pressure based on the read count
@@ -176,13 +174,18 @@ class O3_2Btech:
             p = 1000 + noise
         p = round(p, 2)
 
-        o3 = round(random.uniform(0.01, 0.15), 3)  # Simulate O3 in ppm
-        t = round(random.uniform(15.0, 35.0), 2)   # Simulate temperature in C
-        flow_a = round(random.uniform(0.5, 2.0), 2) # Simulate flow A
-        flow_b = round(random.uniform(0.5, 2.0), 2) # Simulate flow B
-                        
-        return f"{o3},{t},{p},{flow_a},{flow_b}\r\n"
+        # Generate random values for the variables
+        test_values = {
+            "o3": round(random.uniform(0.01, 0.15), 3),   # Simulate O3 in ppm
+            "t": round(random.uniform(15.0, 35.0), 2),    # Simulate temperature in °C
+            "p": p,                                       # Pressure in hPa
+            "flow_a": round(random.uniform(0.5, 2.0), 2), # Flow A in L/min
+            "flow_b": round(random.uniform(0.5, 2.0), 2), # Flow B in L/min
+        }
 
+        # Use self.variables to construct the output packet
+        packet = ",".join(str(test_values[var]) for var in self.variables) + "\r\n"
+        return packet
 
 if __name__ == "__main__":
     # Argument parser to handle command-line inputs
