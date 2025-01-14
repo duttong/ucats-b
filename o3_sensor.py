@@ -27,6 +27,7 @@ class O3_2Btech:
         self.baudrate = baudrate
         self.timeout = timeout
         self.ser = None
+        self.variables = ['o3', 't', 'p', 'flow_a', 'flow_b']   # variables parsed from sensor
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
         self.lock = threading.Lock()  # For thread safety when accessing data
@@ -89,7 +90,7 @@ class O3_2Btech:
                         self.data_buffer.append(parsed_data)  # Append new data to the buffer
                     if self.verbose:
                         data = data.replace('\n', '')
-                        print(f"Raw data: {data}")
+                        print(f"O3 data: {data}")
             except Exception as e:
                 print(f"Error during data collection: {e}")
             time.sleep(1.0)  # Adjust the interval if needed
@@ -102,7 +103,7 @@ class O3_2Btech:
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
-                print(f"Test data: {test_packet}")
+                print(f"O3 Test data: {test_packet}")
             time.sleep(2.0)  # Simulate data every 2 seconds
 
     def stop_data_collection(self):
@@ -121,8 +122,7 @@ class O3_2Btech:
             self.data_buffer.clear()  # Clear the buffer after returning the data
         return data_copy
 
-    @staticmethod
-    def parse_o3(packet, pre):
+    def parse_o3(self, packet, pre):
         """
         Parse a data packet from the 2Btech ozone analyzer and replace date/time
         with values from the computer clock.
@@ -134,26 +134,27 @@ class O3_2Btech:
         Returns:
             dict: Parsed data as a dictionary.
         """
-        current_datetime = datetime.now().replace(microsecond=0)
-        data = packet.replace('\r\n', '')
-        data = data.split(',')
-        
-        # Keep only the variables needed by filtering out indices 5, 6, and 7 (these are the NOx variables)
-        # Also, we will replace 'date' and 'time' from the packet with current system time
-        filtered_data = [value for i, value in enumerate(data) if i not in [5, 6, 7]]
-        filtered_data = [current_datetime] + filtered_data
-        if pre:
-            filtered_variables = ['datetime', f'{pre}o3', f'{pre}t', f'{pre}p', f'{pre}flow_a', f'{pre}flow_b']
-        else:
-            filtered_variables = ['datetime', f'o3', f't', f'p', f'flow_a', f'flow_b']
-
         try:
-            # Zip the filtered data with the filtered variable names
+            # Get current date and time from system clock
+            current_datetime = datetime.now().replace(microsecond=0)
+            
+            # Clean and split the raw packet data
+            data = packet.replace('\r\n', '').split(',')
+            
+            # Filter out indices 5, 6, and 7 (NOx variables) and prepend current datetime
+            filtered_data = [value for i, value in enumerate(data) if i not in [5, 6, 7]]
+            filtered_data = [current_datetime] + filtered_data
+            
+            # Add prefix to variables if provided, otherwise use unmodified names
+            filtered_variables = ['datetime'] + [f'{pre or ""}{var}' for var in self.variables]
+            
+            # Create a dictionary by zipping variable names and corresponding data
             return dict(zip(filtered_variables, filtered_data))
 
         except Exception as e:
-            print(f'Error parsing O3 packet: {data}, Error: {e}')
-
+            print(f"Error parsing O3 packet. Data: {packet}. Error: {e}")
+            return {}
+    
     @staticmethod
     def generate_test_data():
         """Generate a test data packet with random values."""
