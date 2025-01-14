@@ -148,67 +148,52 @@ class TDL_package(QMainWindow):
             QTimer.singleShot(run_duration * 1000, self.stop_collection)
 
     def collect_data(self):
-        """
-        Fetch data from devices and append to respective streams.
-        Updates display panel and handles specific device logic (e.g., pressure updates).
-        """
+        # Fetch data and append to respective streams
         for device_name, device in self.devices.items():
             try:
-                # Fetch and align data with self.all_variables
                 data = device.get_all_data()
-                data_df = pd.DataFrame(data).reindex(columns=self.all_variables)
+                self.streams[device_name] = pd.concat(
+                    [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
+                )
 
-                # Retrieve existing stream and prepare for concatenation
-                existing_stream = self.streams.get(device_name, pd.DataFrame())
-                valid_frames = [
-                    df for df in [existing_stream, data_df] 
-                    if not df.empty and not df.isna().all().all()
-                ]
-                self.streams[device_name] = pd.concat(valid_frames, ignore_index=True) if valid_frames else pd.DataFrame()
-
-                # Update display panel with the latest data
-                if data:
-                    self.display_panel.update_display_data(device_name, data[-1])
+                # Update the display panel with the latest data
+                self.display_panel.update_display_data(device_name, data[-1])
 
                 # Handle pressure updates for the O3 sensor
-                if device_name == "o3_sensor" and data:
+                if device_name == "o3_sensor":
                     self.pressure = float(data[0].get(self.pressure_var, float("nan")))
                     if self.pressure > self.alt_high:
                         self.alt_high_event.set()
-                        print(f"Pressure of {self.pressure} mbar indicates descent.")
+                        print(f"Pressure of {self.pressure} mbar indicates descent or taxiing.")
 
-            except Exception as e:
-                # Handle potential errors during data collection gracefully
-                print(f"Error collecting data for {device_name}: {e}")
+            except IndexError:
+                pass
 
         # Merge all streams into a single DataFrame
-        full_data = pd.DataFrame(columns=self.all_variables)  # Initialize with all variables
-        for stream in self.streams.values():
-            # Filter out empty or all-NA DataFrames before concatenation
-            frames = [full_data, stream]
-            valid_frames = [df for df in frames if not df.empty and not df.isna().all().all()]
-            
-            # Concatenate only valid DataFrames
-            full_data = pd.concat(valid_frames, ignore_index=True)
+        full_data = None
+        for stream_name, stream in self.streams.items():
+            if full_data is None:
+                full_data = stream
+            else:
+                full_data = pd.merge(full_data, stream, on='datetime', how='outer')
 
-        if not full_data.empty:
-            # Remove the last N rows (optional, adjust logic if needed)
+        if full_data is not None:
+            # Remove the last N rows
+            full_data = pd.DataFrame(full_data).reindex(columns=self.all_variables)
             full_data = full_data[:-len(self.streams)]
 
-            # Filter new data based on last saved datetime
-            if getattr(self, 'last_saved_datetime', None) is not None:
-                full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
+        # Filter new data
+        if self.last_saved_datetime is not None:
+            full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
 
-            # Save new data to CSV
-            if not full_data.empty:
-                full_data.to_csv(
-                    self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path)
-                )
-                self.last_saved_datetime = full_data['datetime'].max()
+        # Save new data to CSV
+        if not full_data.empty:
+            full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
+            self.last_saved_datetime = full_data['datetime'].max()
 
-            # Limit the memory footprint for each stream
-            for stream_name in self.streams.keys():
-                self.streams[stream_name] = self.streams[stream_name].tail(self.stream_size)
+        # Limit the memory footprint for each stream
+        for stream_name in self.streams.keys():
+            self.streams[stream_name] = self.streams[stream_name].tail(self.stream_size)
 
     def stop_collection(self):
         # Stop data collection and disconnect devices
