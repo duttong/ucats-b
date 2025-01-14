@@ -8,8 +8,7 @@ import random
 import argparse
 
 class Aeris:
-
-    def __init__(self, port, baudrate=9600, timeout=1, prefix=None, sim_mode=False, verbose=False):
+    def __init__(self, port, baudrate=9600, timeout=1, prefix=None, sim_mode=False, verbose=False, inst_num=1):
         """
         Initialize the Aeris TDL class with the device port and serial configuration.
 
@@ -20,6 +19,7 @@ class Aeris:
             prefix (str, optional): A prefix string applied to the names of all the data variable returned.
             sim_mode (bool, optional): If True, simulate data instead of using the real device. Default is False.
             verbose (bool, optional): If True, print data to stdout (the screen).
+            inst_num (int, optional): Distinguishes between inst 1 or 2 (1 = CO2, 2 = CO).
         """
         self.port = port
         self.baudrate = baudrate
@@ -33,16 +33,27 @@ class Aeris:
         self.prefix = prefix
         self.sim_mode = sim_mode
 
-        # variable names from the header returned by the Aeris instrument.
-        self.variables = [
-            "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
-            "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
-            "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
-            "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
-            "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8", 
-            "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "N2O_ppm", "H2O_ppm", "CO_ppm", 
-            "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC", 
-            "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"]
+        # Shared variable names
+        base_variables = [
+            "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC",
+            "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0",
+            "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6",
+            "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2",
+            "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8",
+            "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "H2O_ppm",
+            "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC",
+            "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"
+        ]
+
+        # Instrument-specific variables
+        if inst_num == 1:
+            instrument_specific_variables = ["N2O_ppm", "CO2_ppm"]
+        else:
+            instrument_specific_variables = ["N2O_ppm", "CO_ppm"]
+
+        # Combine shared and instrument-specific variables
+        self.variables = base_variables + instrument_specific_variables
+
         
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
@@ -102,8 +113,8 @@ class Aeris:
                         self.data_buffer.append(parsed_data)
                     
                 if self.verbose:
-                    pass
-                    #print(f"Raw data: {data.replace('\n', '')}")
+                    d = data.replace('\\n', '')
+                    print(f"Raw data: {d}")
             except Exception as e:
                 print(f"Error during data collection: {e}")
             time.sleep(0.5)  # Adjust the interval if needed
@@ -115,8 +126,7 @@ class Aeris:
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
-                pass
-                #print(f"Test data: {parsed_data}")
+               print(f"Test data: {parsed_data}")
             time.sleep(1)  # Simulate data every 1 second
 
     def send_command(self, command):
@@ -157,106 +167,105 @@ class Aeris:
             self.data_buffer.clear()  # Clear the buffer after returning the data
         return data_copy
 
-    def parse(self, packet, prefix):
+    def parse(self, packet, prefix=None):
         """
         Parse a data packet from the Aeris analyzer and replace the datetime with the computer's
         datetime.
 
         Args:
             packet (str): Raw packet data from the analyzer.
+            prefix (str, optional): Prefix to prepend to variable names in the parsed dictionary.
 
         Returns:
             dict: Parsed data as a dictionary.
-        """
-        data = packet.replace('\r\n', '')
-        data = data.split(',')
 
-        # Replace the Aeris datatime with current system time
-        current_datetime = datetime.now().replace(microsecond=0)    # round to the nearest second
+        Raises:
+            ValueError: If the packet data doesn't match the expected number of variables.
+        """
+        # Clean and split the incoming packet
+        data = packet.replace('\r\n', '').split(',')
+
+        # Replace the Aeris datetime with the current system time (rounded to the nearest second)
+        current_datetime = datetime.now().replace(microsecond=0)
         data[0] = current_datetime
 
-        """    
-        # Keep only the variables you need by filtering out indices ...
-        #filtered_data = [value for i, value in enumerate(data) if i not in [43, 44, 45, 46]]
-        filtered_variables = ['datetime', 'inlet_num', 'press_gas', 'temp_gas', 'therm1', 'therm2', 'therm3', 'therm4', 
-            'laser_t', 'det_t', 'unk1', 'unk2', 'unk3', 'unk4', 'unk5', 'unk6', 'unk7', 'unk8', 'unk9', 
-            'unk10', 'unk11', 'unk12', 'unk13', 'unk14', 'unk15', 'unk16', 'unk17', 'unk18', 'unk19', 
-            'unk20', 'unk21', 'ramp', 'co2_1', 'co2_2', 'h2o', 'n2o_1', 'n2o_2', 'input_v', 
-            'fet_t', 'tec_t1', 'tec_t2', 'tec_v', 'tec_amp', 'unk43', 'unk44', 'unk45', 'unk46']
-        
-        if prefix:
-            filtered_variables = [f'{prefix}{v}' if v[0:3] != 'unk' else v for v in filtered_variables ]
+        # Check if the data length matches the expected number of variables
+        if len(data) != len(self.variables):
+            raise ValueError(f"Data length ({len(data)}) does not match expected variables ({len(self.variables)}).")
+
+        # Apply prefix if provided
+        variables = [f'{prefix}{v}' for v in self.variables] if prefix else self.variables
+
+        # Combine variables and data into a dictionary
+        parsed_data = dict(zip(variables, data))
+        return parsed_data
+    
+    def generate_test_data(self, prefix=None):
         """
+        Generate simulated data for all variables.
 
-        if prefix:
-            self.variables = [f'{prefix}{v}' for v in self.variables]
+        Args:
+            prefix (str, optional): Prefix to prepend to variable names in the generated data.
 
-        try:
-            # Zip the filtered variables with data
-            zipped_data = dict(zip(self.variables, data))
-            
-            # Filter out variables that start with 'unk'
-            filtered_dict = {key: value for key, value in zipped_data.items() if not key.startswith('unk')}
-            
-            return filtered_dict
-
-        except Exception as e:
-            print(f'Error parsing Aeris packet: {data}, Error: {e}')
-
-    @staticmethod
-    def generate_test_data(prefix):
-        """Generate simulated data for all variables, excluding those that start with 'win' or 'Wall'."""
+        Returns:
+            dict: Simulated data as a dictionary.
+        """
         current_time = datetime.now().replace(microsecond=0)
-        inlet_num = 1
+        simulated_data = {}
 
-        # Generate simulated data for each variable.
-        simulated_data = {
-            "datetime": current_time,
-            "Inlet_Number": inlet_num,
-            "P_mbars": round(random.uniform(900, 1100), 2),
-            "T0_degC": round(random.uniform(15, 25), 2),
-            "T1_degC": round(random.uniform(15, 25), 2),
-            "T2_degC": round(random.uniform(15, 25), 2),
-            "T5_degC": round(random.uniform(15, 25), 2),
-            "Tgas_degC": round(random.uniform(15, 25), 2),
-            "Laser_PID_Readout": round(random.uniform(0, 100), 2),
-            "Det_PID_Readout": round(random.uniform(0, 100), 2),
-            "Det_Bkgd": round(random.uniform(0, 10), 2),
-            "Ramp_Ampl": round(random.uniform(0.0, 1.0), 2),
-            "N2O_ppm": round(random.uniform(300, 400), 2),
-            "H2O_ppm": round(random.uniform(1000, 2000), 2),
-            "CO_ppm": round(random.uniform(0, 10), 2),
-            "Power_Input_mV": round(random.uniform(4.5, 5.5), 2),
-            "FET_T_degC": round(random.uniform(30, 40), 2),
-            "TEC_Temp_degC": round(random.uniform(20, 30), 2),
-            "TEC_Sink_Temp_degC": round(random.uniform(20, 30), 2),
-            "TEC_Power_W": round(random.uniform(0.5, 2.0), 2),
-            "GPS_Time": current_time.time(),
-            "Latitude": round(random.uniform(-90, 90), 6),
-            "Longitude": round(random.uniform(-180, 180), 6),
-            "Alt_m": round(random.uniform(0, 5000), 2)
-        }
+        for var in self.variables:
+            if var == "datetime":
+                simulated_data[var] = current_time
+            elif var == "Inlet_Number":
+                simulated_data[var] = 1
+            elif var == "P_mbars":
+                simulated_data[var] = round(random.uniform(900, 1100), 2)
+            elif var.startswith("T"):
+                simulated_data[var] = round(random.uniform(15, 25), 2)
+            elif var == "Laser_PID_Readout" or var == "Det_PID_Readout":
+                simulated_data[var] = round(random.uniform(0, 100), 2)
+            elif var == "Det_Bkgd":
+                simulated_data[var] = round(random.uniform(0, 10), 2)
+            elif var == "Ramp_Ampl":
+                simulated_data[var] = round(random.uniform(0.0, 1.0), 2)
+            elif var == "N2O_ppm":
+                simulated_data[var] = round(random.uniform(300, 400), 2)
+            elif var == "CO2_ppm" or var == "CO_ppm":
+                simulated_data[var] = round(random.uniform(0, 10), 2)
+            elif var == "H2O_ppm":
+                simulated_data[var] = round(random.uniform(1000, 2000), 2)
+            elif var == "Power_Input_mV":
+                simulated_data[var] = round(random.uniform(4.5, 5.5), 2)
+            elif var in ["FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC"]:
+                simulated_data[var] = round(random.uniform(20, 40), 2)
+            elif var == "TEC_Power_W":
+                simulated_data[var] = round(random.uniform(0.5, 2.0), 2)
+            elif var == "Wall_Code":
+                simulated_data[var] = random.randint(0, 10)
+            elif var == "GPS_Time":
+                simulated_data[var] = current_time.time()
+            elif var == "Latitude":
+                simulated_data[var] = round(random.uniform(-90, 90), 6)
+            elif var == "Longitude":
+                simulated_data[var] = round(random.uniform(-180, 180), 6)
+            elif var == "Alt_m":
+                simulated_data[var] = round(random.uniform(0, 5000), 2)
+            elif var.startswith("win"):
+                simulated_data[var] = round(random.uniform(0, 1), 3)
 
-        # Add entries for variables starting with 'win' as random floats.
-        for i in range(10):
-            simulated_data[f"win0Fit{i}"] = round(random.uniform(0, 1), 3)
-            simulated_data[f"win1Fit{i}"] = round(random.uniform(0, 1), 3)
-
-        # Add Wall_Code as a random integer for simplicity.
-        simulated_data["Wall_Code"] = random.randint(0, 10)
-
-        # Add the prefix to the keys, except for 'datetime'
+        # Apply prefix if provided
         if prefix:
             simulated_data = {f'{prefix}{k}' if k != 'datetime' else k: v for k, v in simulated_data.items()}
-        
-        return simulated_data
 
+        return simulated_data
+    
 
 if __name__ == "__main__":
     # Argument parser to handle command-line inputs
     parser = argparse.ArgumentParser(description="Test the Aeris driver.")
     
     parser.add_argument('-p', '--port', required=False, help="Serial port to connect to (e.g., COM3 or /dev/ttyUSB0).")
+    parser.add_argument('-i', '--inst', type=int, default=1, help="Instrument number (1 = CO2, 2 = CO)")
     parser.add_argument('-t', '--test', type=int, help="Test mode: Number of data packets to read and then exit.")
     parser.add_argument('-s', '--simulate', action='store_true', help="Simulate mode: Number of data packets to read and then exit.")
     parser.add_argument('-v', '--verbose', action='store_true', help="Print data to screen")
@@ -267,7 +276,7 @@ if __name__ == "__main__":
     sim_mode = args.port is None
 
     # Create an instance of Aeris
-    analyzer = Aeris(port=args.port if not sim_mode else 'test', prefix='a1_', sim_mode=sim_mode)
+    analyzer = Aeris(port=args.port if not sim_mode else 'test', prefix='a1_', sim_mode=sim_mode, inst_num=args.inst)
 
     # set verbose mode
     if args.verbose:
