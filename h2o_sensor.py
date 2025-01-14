@@ -25,6 +25,7 @@ class Maycomm:
         self.baudrate = baudrate
         self.timeout = timeout
         self.ser = None
+        self.variables = ['H2O_sh', 'H2O_B', 'H2O_lg', 'H2O_CD', 'p', 't', 't_elec', 'amp', 'pow', 'pos', 'zer', 'posB']
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
         self.lock = threading.Lock()  # For thread safety when accessing data
@@ -100,7 +101,7 @@ class Maycomm:
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
-                print(f"Test data: {test_packet}")
+                print(f"H2O test data: {test_packet}")
             time.sleep(2.0)  # Simulate data every 2 seconds
 
     def stop_data_collection(self):
@@ -119,8 +120,7 @@ class Maycomm:
             self.data_buffer.clear()  # Clear the buffer after returning the data
         return data_copy
 
-    @staticmethod
-    def parse_h2o(packet, pre):
+    def parse_h2o(self, packet, pre):
         """
         Parse a data packet from the Maycomm Water Vapor analyzer and replace date/time
         with values from the computer clock.
@@ -132,49 +132,60 @@ class Maycomm:
         Returns:
             dict: Parsed data as a dictionary.
         """
-        current_datetime = datetime.now().replace(microsecond=0)
-        data = packet.replace('\r\n', '')
-        data = data.split()
-
-        # Keep only the variables needed by filtering out indices 0, 8, 13, 15 (0 is time and the others are repeated)
-        # Also, we will replace 'date' and 'time' from the packet with current system time
-        filtered_data = [data[i] for i in range(len(data)) if i not in [0, 8, 13, 15]]
-        filtered_data = [current_datetime] + filtered_data
-
-        if pre:
-            filtered_variables = ['datetime', f'{pre}H2O_sh', f'{pre}H2O_B', f'{pre}H2O_lg', f'{pre}H2O_CD',
-                                  f'{pre}p', f'{pre}t', f'{pre}t_elec', f'{pre}amp', f'{pre}pow', f'{pre}pos',
-                                  f'{pre}zer', f'{pre}posB']
-        else:
-            filtered_variables = ['datetime', 'H2O_sh', 'H2O_B', 'H2O_lg', 'H2O_CD', 'p', 't', 't_elec',
-                                  'amp', 'pow', 'pos', 'zer', 'posB']
-
         try:
-            # Zip the filtered data with the filtered variable names
+            # Get current date and time from system clock
+            current_datetime = datetime.now().replace(microsecond=0)
+
+            # Clean and split the raw packet data
+            data = packet.replace('\r\n', '').split()
+
+            # Filter out unnecessary indices
+            filtered_data = [data[i] for i in range(len(data)) if i not in [0, 8, 13, 15]]
+            filtered_data = [current_datetime] + filtered_data
+
+            # Add prefix to variables if provided, otherwise use unmodified names
+            filtered_variables = ['datetime'] + [f'{pre or ""}{var}' for var in self.variables]
+
+            # Create a dictionary by zipping variable names and corresponding data
             return dict(zip(filtered_variables, filtered_data))
 
         except Exception as e:
-            print(f'Error parsing Maycomm H2O packet: {data}, Error: {e}')
-
-    @staticmethod
-    def generate_test_data():
+            print(f"Error parsing Maycomm H2O packet. Data: {packet}. Error: {e}")
+            return {}
+    
+    def generate_test_data(self):
         """Generate a test data packet with random values."""
-        H2O_sh = round(random.uniform(0.0, 100.0), 2)
-        H2O_B = round(random.uniform(0.0, 100.0), 2)
-        H2O_lg = round(random.uniform(0.0, 100.0), 2)
-        H2O_CD = round(random.uniform(0.0, 100.0), 2)
-        p = round(random.uniform(950, 1050), 1)    # Simulate pressure in hPa
-        t = round(random.uniform(15.0, 35.0), 2)   # Simulate temperature in C
-        t_elec = round(random.uniform(15.0, 35.0), 2)
-        amp = round(random.uniform(0.0, 10.0), 2)
-        pow = round(random.uniform(0.0, 10.0), 2)
-        pos = round(random.uniform(0.0, 10.0), 2)
-        zer = round(random.uniform(0.0, 10.0), 2)
-        posB = round(random.uniform(0.0, 10.0), 2)
-        
-        # Constructing the test data packet with random values
-        return f"{H2O_sh} {H2O_B} {H2O_lg} {H2O_CD} {p} {t} {t_elec} {amp} {pow} {pos} {zer} {posB}\r\n"
 
+        # Define ranges dynamically using self.variables
+        ranges = {
+            "H2O_sh": (0.0, 100.0),
+            "H2O_B": (0.0, 100.0),
+            "H2O_lg": (0.0, 100.0),
+            "H2O_CD": (0.0, 100.0),
+            "p": (950, 1050),           # Pressure in hPa
+            "t": (15.0, 35.0),          # Temperature in °C
+            "t_elec": (15.0, 35.0),
+            "amp": (0.0, 10.0),
+            "pow": (0.0, 10.0),
+            "pos": (0.0, 10.0),
+            "zer": (0.0, 10.0),
+            "posB": (0.0, 10.0),
+        }
+
+        # Filter ranges to only include variables in self.variables
+        filtered_ranges = {var: ranges[var] for var in self.variables if var in ranges}
+
+        # Generate random values for each variable in self.variables
+        test_values = {
+            var: round(random.uniform(*filtered_ranges[var]), 2 if var != "p" else 1)
+            for var in self.variables
+        }
+
+        # Construct the test data packet as a space-separated string
+        packet = " ".join(str(test_values[var]) for var in self.variables) + "\r\n"
+        return packet
+    
+    
 if __name__ == "__main__":
     # Argument parser to handle command-line inputs
     parser = argparse.ArgumentParser(description="Test the Maycomm water vapor sensor driver.")
