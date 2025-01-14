@@ -23,6 +23,7 @@ class LabJackController:
         self.is_collecting = False
         self.lock = threading.Lock()
         self.data_buffer = []  # Buffer to store incoming data
+        self.variables = []
     
     def _load_config(self, file_path):
         if file_path:
@@ -117,9 +118,10 @@ class LabJackController:
     def _simulate_test_data(self):
          while self.is_collecting:
             current_datetime = {'datetime': datetime.now().replace(microsecond=0)}
-            p = round(random.uniform(950, 1050), 1)
+            pumpspeed = round(random.uniform(500, 520), 1)
+            #p = round(random.uniform(950, 1050), 1)
             t = round(random.uniform(20, 30), 1)
-            analog = {f'{self.prefix}amb_press': p, f'{self.prefix}temp1': t}
+            analog = {f'{self.prefix}pump_speed': pumpspeed, f'{self.prefix}temp1': t}
             data = current_datetime | analog
             self.data_buffer.append(data)
             if self.verbose:

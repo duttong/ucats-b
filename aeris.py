@@ -35,7 +35,7 @@ class Aeris:
 
         # Shared variable names
         base_variables = [
-            "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC",
+            "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC",
             "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0",
             "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6",
             "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2",
@@ -107,7 +107,7 @@ class Aeris:
                 
                 # Data parsing and buffer handling should be outside of serial lock
                 if len(data) > 300:
-                    parsed_data = self.parse(data, self.prefix)
+                    parsed_data = self.parse(data)
                     # Locking around the shared buffer to protect data access
                     with self.lock:
                         self.data_buffer.append(parsed_data)
@@ -122,7 +122,8 @@ class Aeris:
     def _simulate_test_data(self):
         """Simulate test data generation every 1 second."""
         while self.is_collecting:
-            parsed_data = self.generate_test_data(self.prefix)
+            parsed_data = self.generate_test_data()
+            parsed_data = self.parse(parsed_data)
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
@@ -167,14 +168,13 @@ class Aeris:
             self.data_buffer.clear()  # Clear the buffer after returning the data
         return data_copy
 
-    def parse(self, packet, prefix=None):
+    def parse(self, packet):
         """
         Parse a data packet from the Aeris analyzer and replace the datetime with the computer's
         datetime.
 
         Args:
             packet (str): Raw packet data from the analyzer.
-            prefix (str, optional): Prefix to prepend to variable names in the parsed dictionary.
 
         Returns:
             dict: Parsed data as a dictionary.
@@ -194,70 +194,64 @@ class Aeris:
             raise ValueError(f"Data length ({len(data)}) does not match expected variables ({len(self.variables)}).")
 
         # Apply prefix if provided
-        variables = [f'{prefix}{v}' for v in self.variables] if prefix else self.variables
-
+        variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
+        
         # Combine variables and data into a dictionary
         parsed_data = dict(zip(variables, data))
         return parsed_data
     
-    def generate_test_data(self, prefix=None):
+    def generate_test_data(self):
         """
         Generate simulated data for all variables.
 
-        Args:
-            prefix (str, optional): Prefix to prepend to variable names in the generated data.
-
         Returns:
-            dict: Simulated data as a dictionary.
+            str: Simulated data as a comma-delimited string.
         """
         current_time = datetime.now().replace(microsecond=0)
-        simulated_data = {}
+        simulated_data = []
 
         for var in self.variables:
             if var == "datetime":
-                simulated_data[var] = current_time
+                simulated_data.append(str(current_time))
             elif var == "Inlet_Number":
-                simulated_data[var] = 1
+                simulated_data.append("1")
             elif var == "P_mbars":
-                simulated_data[var] = round(random.uniform(900, 1100), 2)
+                simulated_data.append(f"{round(random.uniform(900, 1100), 2):.2f}")
             elif var.startswith("T"):
-                simulated_data[var] = round(random.uniform(15, 25), 2)
-            elif var == "Laser_PID_Readout" or var == "Det_PID_Readout":
-                simulated_data[var] = round(random.uniform(0, 100), 2)
+                simulated_data.append(f"{round(random.uniform(15, 25), 2):.2f}")
+            elif var in ["Laser_PID_Readout", "Det_PID_Readout"]:
+                simulated_data.append(f"{round(random.uniform(0, 100), 2):.2f}")
             elif var == "Det_Bkgd":
-                simulated_data[var] = round(random.uniform(0, 10), 2)
+                simulated_data.append(f"{round(random.uniform(0, 10), 2):.2f}")
             elif var == "Ramp_Ampl":
-                simulated_data[var] = round(random.uniform(0.0, 1.0), 2)
+                simulated_data.append(f"{round(random.uniform(0.0, 1.0), 2):.2f}")
             elif var == "N2O_ppm":
-                simulated_data[var] = round(random.uniform(300, 400), 2)
-            elif var == "CO2_ppm" or var == "CO_ppm":
-                simulated_data[var] = round(random.uniform(0, 10), 2)
+                simulated_data.append(f"{round(random.uniform(300, 400), 2):.2f}")
+            elif var in ["CO2_ppm", "CO_ppm"]:
+                simulated_data.append(f"{round(random.uniform(0, 10), 2):.2f}")
             elif var == "H2O_ppm":
-                simulated_data[var] = round(random.uniform(1000, 2000), 2)
+                simulated_data.append(f"{round(random.uniform(1000, 2000), 2):.2f}")
             elif var == "Power_Input_mV":
-                simulated_data[var] = round(random.uniform(4.5, 5.5), 2)
+                simulated_data.append(f"{round(random.uniform(4.5, 5.5), 2):.2f}")
             elif var in ["FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC"]:
-                simulated_data[var] = round(random.uniform(20, 40), 2)
+                simulated_data.append(f"{round(random.uniform(20, 40), 2):.2f}")
             elif var == "TEC_Power_W":
-                simulated_data[var] = round(random.uniform(0.5, 2.0), 2)
+                simulated_data.append(f"{round(random.uniform(0.5, 2.0), 2):.2f}")
             elif var == "Wall_Code":
-                simulated_data[var] = random.randint(0, 10)
+                simulated_data.append(str(random.randint(0, 10)))
             elif var == "GPS_Time":
-                simulated_data[var] = current_time.time()
+                simulated_data.append(str(current_time.time()))
             elif var == "Latitude":
-                simulated_data[var] = round(random.uniform(-90, 90), 6)
+                simulated_data.append(f"{round(random.uniform(-90, 90), 6):.6f}")
             elif var == "Longitude":
-                simulated_data[var] = round(random.uniform(-180, 180), 6)
+                simulated_data.append(f"{round(random.uniform(-180, 180), 6):.6f}")
             elif var == "Alt_m":
-                simulated_data[var] = round(random.uniform(0, 5000), 2)
+                simulated_data.append(f"{round(random.uniform(0, 5000), 2):.2f}")
             elif var.startswith("win"):
-                simulated_data[var] = round(random.uniform(0, 1), 3)
+                simulated_data.append(f"{round(random.uniform(0, 1), 3):.3f}")
 
-        # Apply prefix if provided
-        if prefix:
-            simulated_data = {f'{prefix}{k}' if k != 'datetime' else k: v for k, v in simulated_data.items()}
-
-        return simulated_data
+        packet = ",".join(simulated_data) + "\r\n"
+        return packet
     
 
 if __name__ == "__main__":

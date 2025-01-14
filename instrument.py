@@ -29,8 +29,11 @@ class TDL_package(QMainWindow):
         self.sol_cal_add = ''
         self.sol_cal = 0
         self.pressure_var = ''
-        self.pressure = 1200
-        self.stop_event = threading.Event()
+        self.pressure = 1200.0
+        self.alt_high_event = threading.Event()     # above high alt threshold
+        self.alt_low_event = threading.Event()      # below low alt threshold
+        self.alt_high = 0       # mbar (these values are loaded from config.yaml)
+        self.alt_low = 5000     # mbar
         self.extra_vars = {'sol_cal': self.sol_cal}       # extra variables for the .csv file.
 
         self.setWindowTitle("UCATS-B")
@@ -40,6 +43,8 @@ class TDL_package(QMainWindow):
         self.stream_size = stream_size
         self.streams = {}  # Dictionary to store streams
         self.devices = {}  # Dictionary to store devices
+        self.vars = {}
+        self.all_variables = set()  # Unified list of all variables across devices
 
         # Create instances for sensors on different ports (as in the original code)
         # Initialize devices dynamically from config
@@ -55,13 +60,16 @@ class TDL_package(QMainWindow):
                 device = O3_2Btech(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
-                    sim_mode=device_config['sim_mode']
+                    sim_mode=device_config['sim_mode'],
+                    verbose=self.verbose
                 )
+                self.pressure_var = f'{device_config["data_var_prefix"]}p'
             elif device_name.lower() == 'h2o_sensor':
                 device = Maycomm(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
-                    sim_mode=device_config['sim_mode']
+                    sim_mode=device_config['sim_mode'],
+                    verbose=self.verbose
                 )
             elif device_name.lower() == 'labjack':
                 device = LabJackController(
@@ -71,7 +79,6 @@ class TDL_package(QMainWindow):
                 )
                 self.pilot_add = device_config['pilot']
                 self.sol_cal_add = device_config['sol_cal']
-                self.pressure_var = f'{device_config["data_var_prefix"]}amb_press'
             else:
                 raise ValueError(f"Unknown device type: {device_name}")
             
@@ -80,21 +87,26 @@ class TDL_package(QMainWindow):
             self.devices[device_name] = device
             self.streams[device_name] = pd.DataFrame()
 
-            # Initialize the display panel
-            self.display_panel = DisplayPanel(config_file, self.devices)
-            self.setCentralWidget(self.display_panel)
+            # Store prefixed variables in self.vars instead of modifying the device instance
+            self.vars[device_name] = [
+                f"{device_config['data_var_prefix']}{v}" for v in device.variables
+            ]
+            self.all_variables.update(self.vars[device_name])
+
+        # Convert the set of variables to a sorted list for consistency
+        self.all_variables = ['datetime'] + sorted(self.all_variables)
+
+        # Initialize the display panel
+        self.display_panel = DisplayPanel(config_file, self.devices)
+        self.setCentralWidget(self.display_panel)
 
         # load pressure trigger points
         for event, value in self.config['triggers'].items():
-            if event == 'pump_on':
-                self.pump_on = value
-            elif event == 'pump_off':
-                self.pump_off = value
+            if event == 'alt_high':
+                self.alt_high = value
+            elif event == 'alt_low':
+                self.alt_low = value
         
-        # Timer for periodic data collection
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.collect_data)
-
         # Load existing data if the CSV file already exists
         if os.path.exists(self.file_path):
             previous_data = pd.read_csv(self.file_path, parse_dates=['datetime'])
@@ -102,6 +114,10 @@ class TDL_package(QMainWindow):
             del previous_data  # remove from memory
         else:
             self.last_saved_datetime = None
+
+        # Timer for periodic data collection
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.collect_data)
 
         # start pilot light and pressure triggers
         threading.Thread(target=self.pilot_light, daemon=True).start()
@@ -112,7 +128,7 @@ class TDL_package(QMainWindow):
         with open(file_path, 'r') as file:
             return yaml.safe_load(file)
     
-    def create_filename(self, prefix="tdl"):
+    def create_filename(self, prefix="ucatsb"):
         # Get the current date and hour
         current_time = datetime.now()
         # Format the filename as "{prefix}-YYYYMMDDHH.csv"
@@ -132,42 +148,62 @@ class TDL_package(QMainWindow):
             QTimer.singleShot(run_duration * 1000, self.stop_collection)
 
     def collect_data(self):
-        # Fetch data and append to respective streams
+        """
+        Fetch data from devices and append to respective streams.
+        Updates display panel and handles specific device logic (e.g., pressure updates).
+        """
         for device_name, device in self.devices.items():
             try:
+                # Fetch and align data with self.all_variables
                 data = device.get_all_data()
-                self.streams[device_name] = pd.concat(
-                    [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
-                )
+                data_df = pd.DataFrame(data).reindex(columns=self.all_variables)
 
-                # Update the display panel with the latest data
-                self.display_panel.update_display_data(device_name, data[-1])
+                # Retrieve existing stream and prepare for concatenation
+                existing_stream = self.streams.get(device_name, pd.DataFrame())
+                valid_frames = [
+                    df for df in [existing_stream, data_df] 
+                    if not df.empty and not df.isna().all().all()
+                ]
+                self.streams[device_name] = pd.concat(valid_frames, ignore_index=True) if valid_frames else pd.DataFrame()
 
-                # update the ambient pressure variable
-                if device_name == 'labjack':
-                    self.pressure = data[0][self.pressure_var]
-            except IndexError:
-                pass
+                # Update display panel with the latest data
+                if data:
+                    self.display_panel.update_display_data(device_name, data[-1])
+
+                # Handle pressure updates for the O3 sensor
+                if device_name == "o3_sensor" and data:
+                    self.pressure = float(data[0].get(self.pressure_var, float("nan")))
+                    if self.pressure > self.alt_high:
+                        self.alt_high_event.set()
+                        print(f"Pressure of {self.pressure} mbar indicates descent.")
+
+            except Exception as e:
+                # Handle potential errors during data collection gracefully
+                print(f"Error collecting data for {device_name}: {e}")
 
         # Merge all streams into a single DataFrame
-        full_data = None
-        for stream_name, stream in self.streams.items():
-            if full_data is None:
-                full_data = stream
-            else:
-                full_data = pd.merge(full_data, stream, on='datetime', how='outer')
+        full_data = pd.DataFrame(columns=self.all_variables)  # Initialize with all variables
+        for stream in self.streams.values():
+            # Filter out empty or all-NA DataFrames before concatenation
+            frames = [full_data, stream]
+            valid_frames = [df for df in frames if not df.empty and not df.isna().all().all()]
+            
+            # Concatenate only valid DataFrames
+            full_data = pd.concat(valid_frames, ignore_index=True)
 
-        if full_data is not None:
-            # Remove the last N rows
+        if not full_data.empty:
+            # Remove the last N rows (optional, adjust logic if needed)
             full_data = full_data[:-len(self.streams)]
 
-            # Filter new data
-            if self.last_saved_datetime is not None:
+            # Filter new data based on last saved datetime
+            if getattr(self, 'last_saved_datetime', None) is not None:
                 full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
 
             # Save new data to CSV
             if not full_data.empty:
-                full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
+                full_data.to_csv(
+                    self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path)
+                )
                 self.last_saved_datetime = full_data['datetime'].max()
 
             # Limit the memory footprint for each stream
@@ -194,37 +230,45 @@ class TDL_package(QMainWindow):
     def altitude_monitor(self):
         time.sleep(5)   # wait a little to let everything startup
         while True:
-            if self.pressure <= self.pump_on:  # Takeoff or ascending condition
-                if not self.stop_event.is_set():
+            if self.pressure <= self.alt_high:  # Takeoff or ascending condition
+                if not self.alt_high_event.is_set():
                     self.at_altitude()
             
-            if self.pressure > self.pump_off:  # Landing or descending condition
-                if not self.stop_event.is_set():
+            if self.pressure > self.alt_low:  # Landing or descending condition
+                if not self.alt_low_event.is_set():
                     self.below_altitude()
             
-            time.sleep(1)  # Polling interval
+            print(f'checking alt: {self.pressure}')
+            time.sleep(2)  # Polling interval
 
     def at_altitude(self):
         print("Plane has reached altitude.")
         jack = self.devices["labjack"]
-        self.stop_event.clear()
+        self.alt_low_event.clear()
 
         # cycle the cal solenoid while at altitude
-        while not self.stop_event.is_set():
+        while True:  # Stay in the loop until the plane descends
+
+            # Solenoid cycling logic
             jack.write_digital({self.sol_cal_add: 1})
+            print('sol cal/air high')
             self.extra_vars['sol_cal'] = 1
-            if self.stop_event.wait(100):
+            if self.alt_high_event.wait(10):
                 break
             jack.write_digital({self.sol_cal_add: 0})
             self.extra_vars['sol_cal'] = 0
-            if self.stop_event.wait(100):
+            print('sol cal/air low')
+            if self.alt_high_event.wait(10):
                 break
+
         print("Exiting cruising altitude actions.")
+        self.alt_high_event.clear()  # Clear the high-altitude event
 
     def below_altitude(self):
-        print("Plane is descending.")
+        print("Plane is descending or taxiing.")
         jack = self.devices["labjack"]
-        self.stop_event.set()
+        self.alt_high_event.clear()
+        self.alt_low_event.set()
         # Perform actions during descent or post-landing
         jack.write_digital({self.sol_cal_add: 0})
         self.extra_vars['sol_cal'] = 0

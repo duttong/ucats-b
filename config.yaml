@@ -1,12 +1,13 @@
 triggers:
-  pump_on: 700    # less than this mbar
-  pump_off: 800   # greater than this mbar
+  alt_high: 700    # less than this mbar
+  alt_low: 800   # greater than this mbar
 
 devices:
   labjack:
     table: labjack.yaml
     sim_mode: true
     data_var_prefix: j_     # leave blank for no prefix
+
     pilot: 'FIO6'           # pilot watchdog
     pilotswitch: 'FIO7'     # pilot on/off switch
     sol_cal: 'CIO1'         # solenoid for cal1 or cal2
@@ -17,29 +18,31 @@ devices:
     power_aerisCO2: 'EIO4'
     power_aerisCO: 'EIO6'
     display_vars:
-      - amb_press
+      - pump_speed
       - temp1
-    
-  aeris_CO:
-    serial_port: /dev/ttyUSB3
+
+  aeris_CO2:
+    inst_num: 1   # don't change this
+    serial_port: /dev/ttyUSB2
     sim_mode: true
     data_var_prefix: d1_
     display_vars:
       - Det_Bkgd
       - Ramp_Ampl
       - N2O_ppm
-      - CO_ppm
+      - CO2_ppm
 
-  aeris_CO2:
-    serial_port: /dev/ttyUSB2
+  aeris_CO:
+    inst_num: 2   # don't change this
+    serial_port: /dev/ttyUSB3
     sim_mode: true
     data_var_prefix: d2_
     display_vars:
       - Det_Bkgd
       - Ramp_Ampl
       - N2O_ppm
-      - CO2_ppm
-
+      - CO_ppm
+ 
   o3_sensor:
     serial_port: /dev/ttyUSB0
     sim_mode: true
@@ -48,7 +51,7 @@ devices:
       - t
       - p
       - o3
-
+   
   h2o_sensor:
     serial_port: /dev/ttyUSB1
     sim_mode: true
@@ -57,3 +60,4 @@ devices:
       - H2O_sh
       - H2O_B
       - H2O_lg
+   

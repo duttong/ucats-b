@@ -22,7 +22,7 @@ report:
         cal: [0, 1]
     digital:
       # Digital Input/Output Configuration
-      EIO0:
-        var: 'digIN0' 
-      EIO1: 
-        var: 'digIN1' 
+      #EIO0:
+      #  var: 'digIN0' 
+      #EIO1: 
+      #  var: 'digIN1' 

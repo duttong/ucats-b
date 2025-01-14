@@ -28,12 +28,12 @@ class O3_2Btech:
         self.timeout = timeout
         self.ser = None
         self.variables = ['o3', 't', 'p', 'flow_a', 'flow_b']   # variables parsed from sensor
+        self.prefix = prefix
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
         self.lock = threading.Lock()  # For thread safety when accessing data
         self.verbose = verbose
         self.sim_mode = sim_mode
-        self.prefix = prefix
 
     def connect(self):
         """Establish the serial connection to the 2Btech ozone analyzer or enter test mode."""
@@ -85,7 +85,7 @@ class O3_2Btech:
                 # Read a line from the analyzer
                 data = self.ser.readline().decode()
                 if len(data) > 10:
-                    parsed_data = self.parse_o3(data, self.prefix)
+                    parsed_data = self.parse_o3(data)
                     with self.lock:
                         self.data_buffer.append(parsed_data)  # Append new data to the buffer
                     if self.verbose:
@@ -99,7 +99,7 @@ class O3_2Btech:
         """Simulate test data generation every 2 seconds."""
         while self.is_collecting:
             test_packet = self.generate_test_data()
-            parsed_data = self.parse_o3(test_packet, self.prefix)
+            parsed_data = self.parse_o3(test_packet)
             with self.lock:
                 self.data_buffer.append(parsed_data)
             if self.verbose:
@@ -122,14 +122,13 @@ class O3_2Btech:
             self.data_buffer.clear()  # Clear the buffer after returning the data
         return data_copy
 
-    def parse_o3(self, packet, pre):
+    def parse_o3(self, packet):
         """
         Parse a data packet from the 2Btech ozone analyzer and replace date/time
         with values from the computer clock.
 
         Args:
             packet (str): Raw packet data from the analyzer.
-            pre (str): Prefix used for naming parsed data variables.
 
         Returns:
             dict: Parsed data as a dictionary.
@@ -146,7 +145,7 @@ class O3_2Btech:
             filtered_data = [current_datetime] + filtered_data
             
             # Add prefix to variables if provided, otherwise use unmodified names
-            filtered_variables = ['datetime'] + [f'{pre or ""}{var}' for var in self.variables]
+            filtered_variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
             
             # Create a dictionary by zipping variable names and corresponding data
             return dict(zip(filtered_variables, filtered_data))
