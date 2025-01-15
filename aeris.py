@@ -32,29 +32,25 @@ class Aeris:
         self.verbose = verbose
         self.prefix = prefix
         self.sim_mode = sim_mode
+        self.inst_num = inst_num
 
         # variable names from the header returned by the Aeris instrument.
         # NOTE: The order of these variables is important since they line up with the raw data.
         if inst_num == 1:
+            # CO instrument
             self.variables = [
-                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
-                "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
-                "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
-                "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
-                "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8", 
-                "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "N2O_ppm", "H2O_ppm", "CO2_ppm", 
-                "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC", 
-                "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"]
+                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "Unknown", "T2_degC", 
+                "N2O_ppm", "H2O_ppm", "CO_ppm", "T3_degC", "Wall_Code"]
         else:
             self.variables = [
-                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
-                "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
+                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "Unknown1", "T2_degC", 
+                "big1", "big2", "Unknown2", "win0Fit0", "N2O_ppm",
                 "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
                 "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
                 "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8", 
-                "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "N2O_ppm", "H2O_ppm", "CO_ppm", 
+                "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "Det_PID_Readout", "H2O_ppm", "CO2_ppm", 
                 "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC", 
-                "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"]
+                "TEC_Power_W", "Wall_Code", "GPS_Time"]
         
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
@@ -106,16 +102,17 @@ class Aeris:
                     # Read a line from the analyzer
                     data = self.ser.readline().decode()
                 
+                if self.verbose:
+                    d = data.replace('\\n', '')
+                    print(f"Raw data length({len(data)}): {d}")
+
                 # Data parsing and buffer handling should be outside of serial lock
-                if len(data) > 300:
+                if len(data) > 80:
                     parsed_data = self.parse(data)
                     # Locking around the shared buffer to protect data access
                     with self.lock:
                         self.data_buffer.append(parsed_data)
                     
-                if self.verbose:
-                    d = data.replace('\\n', '')
-                    print(f"Raw data: {d}")
             except Exception as e:
                 print(f"Error during data collection: {e}")
             time.sleep(0.5)  # Adjust the interval if needed
@@ -188,7 +185,8 @@ class Aeris:
 
         # Replace the Aeris datetime with the current system time (rounded to the nearest second)
         current_datetime = datetime.now().replace(microsecond=0)
-        data = [current_datetime] + data 
+        data[0] = current_datetime
+        #data = [current_datetime] + data 
 
         # Apply prefix if provided
         variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
@@ -199,6 +197,18 @@ class Aeris:
 
         # Combine variables and data into a dictionary
         parsed_data = dict(zip(variables, data))
+
+        # Convert values to float if their variable name contains "ppm"
+        for key in parsed_data.keys():
+            if "ppm" in key:
+                try:
+                    if self.inst_num == 1:
+                        parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)
+                    else:
+                        parsed_data[key] = round(float(parsed_data[key]) * 10000, 2)
+                except ValueError:
+                    raise ValueError(f"Cannot convert value of '{key}' to float: {parsed_data[key]}")
+        
         return parsed_data
     
     def generate_test_data(self):
@@ -227,11 +237,11 @@ class Aeris:
             elif var == "Ramp_Ampl":
                 simulated_data.append(f"{round(random.uniform(0.0, 1.0), 2):.2f}")
             elif var == "N2O_ppm":
-                simulated_data.append(f"{round(random.uniform(300, 400), 2):.2f}")
+                simulated_data.append(f"{round(random.uniform(.300, .400), 2):.2f}")
             elif var in ["CO2_ppm", "CO_ppm"]:
                 simulated_data.append(f"{round(random.uniform(0, 10), 2):.2f}")
             elif var == "H2O_ppm":
-                simulated_data.append(f"{round(random.uniform(1000, 2000), 2):.2f}")
+                simulated_data.append(f"{round(random.uniform(.1000, .2000), 2):.2f}")
             elif var == "Power_Input_mV":
                 simulated_data.append(f"{round(random.uniform(4.5, 5.5), 2):.2f}")
             elif var in ["FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC"]:
@@ -251,7 +261,7 @@ class Aeris:
             elif var.startswith("win"):
                 simulated_data.append(f"{round(random.uniform(0, 1), 3):.3f}")
 
-        packet = ",".join(simulated_data) + "\r\n"
+        packet = "0000,1" + ",".join(simulated_data) + "\r\n"
         return packet
     
 
