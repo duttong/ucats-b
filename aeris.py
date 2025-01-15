@@ -33,27 +33,28 @@ class Aeris:
         self.prefix = prefix
         self.sim_mode = sim_mode
 
-        # Shared variable names
-        base_variables = [
-            "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC",
-            "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0",
-            "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6",
-            "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2",
-            "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8",
-            "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "H2O_ppm",
-            "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC",
-            "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"
-        ]
-
-        # Instrument-specific variables
+        # variable names from the header returned by the Aeris instrument.
+        # NOTE: The order of these variables is important since they line up with the raw data.
         if inst_num == 1:
-            instrument_specific_variables = ["N2O_ppm", "CO2_ppm"]
+            self.variables = [
+                "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
+                "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
+                "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
+                "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
+                "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8", 
+                "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "N2O_ppm", "H2O_ppm", "CO2_ppm", 
+                "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC", 
+                "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"]
         else:
-            instrument_specific_variables = ["N2O_ppm", "CO_ppm"]
-
-        # Combine shared and instrument-specific variables
-        self.variables = base_variables + instrument_specific_variables
-
+            self.variables = [
+                "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
+                "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
+                "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
+                "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
+                "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8", 
+                "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "N2O_ppm", "H2O_ppm", "CO_ppm", 
+                "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC", 
+                "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"]
         
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
