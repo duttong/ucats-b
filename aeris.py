@@ -37,7 +37,7 @@ class Aeris:
         # NOTE: The order of these variables is important since they line up with the raw data.
         if inst_num == 1:
             self.variables = [
-                "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
+                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
                 "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
                 "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
                 "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
@@ -47,7 +47,7 @@ class Aeris:
                 "TEC_Power_W", "Wall_Code", "GPS_Time", "Latitude", "Longitude", "Alt_m"]
         else:
             self.variables = [
-                "datetime", "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
+                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "T2_degC", 
                 "T5_degC", "Tgas_degC", "Laser_PID_Readout", "Det_PID_Readout", "win0Fit0", 
                 "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
                 "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
@@ -188,15 +188,15 @@ class Aeris:
 
         # Replace the Aeris datetime with the current system time (rounded to the nearest second)
         current_datetime = datetime.now().replace(microsecond=0)
-        data[0] = current_datetime
-
-        # Check if the data length matches the expected number of variables
-        if len(data) != len(self.variables):
-            raise ValueError(f"Data length ({len(data)}) does not match expected variables ({len(self.variables)}).")
+        data = [current_datetime] + data 
 
         # Apply prefix if provided
         variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
         
+        # Check if the data length matches the expected number of variables
+        if len(data) != len(variables):
+            raise ValueError(f"Data length ({len(data)}) does not match expected variables ({len(variables)}).")
+
         # Combine variables and data into a dictionary
         parsed_data = dict(zip(variables, data))
         return parsed_data
