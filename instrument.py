@@ -54,6 +54,7 @@ class TDL_package(QMainWindow):
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode'],
+                    inst_num=device_config['inst_num'],
                     verbose=self.verbose
                 )
             elif device_name.lower() == 'o3_sensor':
@@ -148,6 +149,7 @@ class TDL_package(QMainWindow):
             QTimer.singleShot(run_duration * 1000, self.stop_collection)
 
     def collect_data(self):
+
         # Fetch data and append to respective streams
         for device_name, device in self.devices.items():
             try:
@@ -158,6 +160,8 @@ class TDL_package(QMainWindow):
 
                 # Update the display panel with the latest data
                 self.display_panel.update_display_data(device_name, data[-1])
+                if device_name == 'aeris_CO2':
+                    self.display_panel.update_time(data[-1])
 
                 # Handle pressure updates for the O3 sensor
                 if device_name == "o3_sensor":
