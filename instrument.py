@@ -227,7 +227,6 @@ class TDL_package(QMainWindow):
                 if not self.alt_low_event.is_set():
                     self.below_altitude()
             
-            print(f'checking alt: {self.pressure}')
             time.sleep(2)  # Polling interval
 
     def at_altitude(self):
