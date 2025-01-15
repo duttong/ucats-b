@@ -24,6 +24,7 @@ class CSVPlotter(QMainWindow):
         self.left_y_vars = left_y_vars or []  # Variables for the left Y-axis
         self.right_y_vars = right_y_vars or []  # Variables for the right Y-axis
         self.offset = offset
+        self.data = None
 
         # background colors
         self.c_background = "oldlace"
@@ -148,7 +149,7 @@ class CSVPlotter(QMainWindow):
 
         self.canvas.mpl_connect('draw_event', self.update_statistics)
 
-        # Automatically load the most recent tdl-*.csv file on startup
+        # Automatically load the most recent ucatsb-*.csv file on startup
         self.load_csv_data()
 
         # Plot variables passed to the instance
@@ -280,7 +281,7 @@ class CSVPlotter(QMainWindow):
     def load_csv_data(self, file_path=None):
         if file_path is None:
             csv_files = sorted(
-                Path('.').glob('tdl-*.csv'), 
+                Path('.').glob('ucatsb-*.csv'), 
                 key=lambda x: x.stat().st_mtime, 
                 reverse=True
             )
@@ -355,29 +356,57 @@ class CSVPlotter(QMainWindow):
 
         # Plot data for the left y-axis
         if variable_1 and variable_1 in self.data.columns:
-            line1, = self.ax.plot(self.data['datetime'], self.data[variable_1], label=variable_1, color=colors[0])
-            lines.append(line1)
-            labels.append(variable_1)
-            has_data = True
+            # Drop rows where variable_1 or 'datetime' has NaN values
+            plot_data = self.data[['datetime', variable_1]].dropna()
+
+            # Check if there's any data left
+            if not plot_data.empty:
+                line1, = self.ax.plot(plot_data['datetime'], plot_data[variable_1], label=variable_1, color=colors[0])
+                lines.append(line1)
+                labels.append(variable_1)
+                has_data = True
+            else:
+                print(f"No valid data to plot for {variable_1}.")
 
         if variable_2 and variable_2 != variable_1 and variable_2 in self.data.columns:
-            line2, = self.ax.plot(self.data['datetime'], self.data[variable_2], label=variable_2, color=colors[1])
-            lines.append(line2)
-            labels.append(variable_2)
-            has_data = True
+            # Drop rows where variable_2 or 'datetime' has NaN values
+            plot_data = self.data[['datetime', variable_2]].dropna()
+
+            # Check if there's any data left
+            if not plot_data.empty:
+                line2, = self.ax.plot(plot_data['datetime'], plot_data[variable_2], label=variable_2, color=colors[1])
+                lines.append(line2)
+                labels.append(variable_2)
+                has_data = True
+            else:
+                print(f"No valid data to plot for {variable_2}.")
 
         # Plot data for the right y-axis if there’s data for variable_3 or variable_4
         if variable_3 and variable_3 in self.data.columns:
-            line3, = self.ax2.plot(self.data['datetime'], self.data[variable_3], label=variable_3, color=colors[2])
-            lines.append(line3)
-            labels.append(variable_3)
-            has_data = True
+            # Drop rows where variable_3 or 'datetime' has NaN values
+            plot_data = self.data[['datetime', variable_3]].dropna()
+
+            # Check if there's any data left
+            if not plot_data.empty:
+                line3, = self.ax2.plot(plot_data['datetime'], plot_data[variable_3], label=variable_3, color=colors[2])
+                lines.append(line3)
+                labels.append(variable_3)
+                has_data = True
+            else:
+                print(f"No valid data to plot for {variable_3}.")
 
         if variable_4 and variable_4 != variable_3 and variable_4 in self.data.columns:
-            line4, = self.ax2.plot(self.data['datetime'], self.data[variable_4], label=variable_4, color=colors[3])
-            lines.append(line4)
-            labels.append(variable_4)
-            has_data = True
+            # Drop rows where variable_4 or 'datetime' has NaN values
+            plot_data = self.data[['datetime', variable_4]].dropna()
+
+            # Check if there's any data left
+            if not plot_data.empty:
+                line4, = self.ax2.plot(plot_data['datetime'], plot_data[variable_4], label=variable_4, color=colors[3])
+                lines.append(line4)
+                labels.append(variable_4)
+                has_data = True
+            else:
+                print(f"No valid data to plot for {variable_4}.")
 
         # Set labels for both y-axes
         self.ax.set_ylabel('Value (Left Axis)')
