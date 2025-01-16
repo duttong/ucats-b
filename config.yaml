@@ -44,7 +44,7 @@ devices:
  
   o3_sensor:
     serial_port: /dev/ttyUSB1
-    sim_mode: true
+    sim_mode: false
     data_var_prefix: oz_
     display_vars:
       - t
