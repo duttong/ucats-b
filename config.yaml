@@ -48,7 +48,7 @@ devices:
   Aeris_CO2:
     inst_num: 2   # don't change this
     serial_port: /dev/ttyUSB0
-    sim_mode: true
+    sim_mode: false
     data_var_prefix: d1_
     display_vars:
       - T_gas
