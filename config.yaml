@@ -57,7 +57,7 @@ devices:
 
   Aeris_CO:
     inst_num: 1   # don't change this
-    serial_port: /dev/ttyUSB2
+    serial_port: /dev/ttyUSB3
     sim_mode: false
     data_var_prefix: d2_
     display_vars:
@@ -65,16 +65,16 @@ devices:
       - T_ambient
       - N2O_ppb
       - CO_ppb
- 
+
   O3_sensor:
-    serial_port: /dev/ttyUSB1
+    serial_port: /dev/ttyUSB2
     sim_mode: false
     data_var_prefix: oz_
     display_vars:
       - t
       - p
       - o3
-   
+
   H2O_sensor:
     serial_port: /dev/ttyUSB1
     sim_mode: true
@@ -83,4 +83,4 @@ devices:
       - H2O_sh
       - H2O_B
       - H2O_lg
-   
+
