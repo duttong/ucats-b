@@ -22,28 +22,28 @@ devices:
 
   aeris_CO2:
     inst_num: 2   # don't change this
-    serial_port: /dev/ttyUSB1
+    serial_port: /dev/ttyUSB0
     sim_mode: false
     data_var_prefix: d1_
     display_vars:
-      - Det_Bkgd
-      - Ramp_Ampl
-      - N2O_ppm
+      - T_gas
+      - T_ambient
+      - N2O_ppb
       - CO2_ppm
 
   aeris_CO:
     inst_num: 1   # don't change this
-    serial_port: /dev/ttyUSB0
+    serial_port: /dev/ttyUSB2
     sim_mode: false
     data_var_prefix: d2_
     display_vars:
-      - Det_Bkgd
-      - Ramp_Ampl
-      - N2O_ppm
-      - CO_ppm
+      - T_gas
+      - T_ambient
+      - N2O_ppb
+      - CO_ppb
  
   o3_sensor:
-    serial_port: /dev/ttyUSB0
+    serial_port: /dev/ttyUSB1
     sim_mode: true
     data_var_prefix: oz_
     display_vars:
