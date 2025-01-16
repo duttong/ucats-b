@@ -41,7 +41,7 @@ class Aeris:
             # CO instrument
             self.variables = [
                 "Unused_0", "P_mbars", "T_gas", "T_ambient", "Unused_1", "Unused_2",
-                "N2O_ppm", "H2O_ppm", "CO_ppm", "T_TEC_Sink", "Unused_3"]
+                "N2O_ppb", "H2O_ppm", "CO_ppb", "T_TEC_Sink", "Unused_3"]
             
         else:
             self.variables = [
@@ -50,7 +50,7 @@ class Aeris:
                 "Unused_7", "Unused_8", "Unused_9", "Unused_10", "Unused_11", "Unused_12", 
                 "Unused_13", "Unused_14", "Unused_15", "Unused_16", "Unused_17", "Unused_18", 
                 "Unused_19", "Unused_20", "Unused_21", "Unused_22", "Unused_23", "Unused_24", 
-                "Ramp_Ampl", "Unused_25", "CO2_ppm", "H2O_ppm", "Unused_26", "N2O_ppm", 
+                "Ramp_Ampl", "Unused_25", "CO2_ppm", "H2O_ppm", "Unused_26", "N2O_ppb", 
                 "Power_Input_mV", "T_FET", "T_TEC", "T_TEC_Sink", 
                 "TEC_Power", "Unused_27"]
         
@@ -204,13 +204,15 @@ class Aeris:
         # Combine variables and data into a dictionary
         parsed_data = dict(zip(variables, data))
 
-        # Convert values to float if their variable name contains "ppm"
+        # Convert values to float if their variable name contains "ppb"
         for key in parsed_data.keys():
-            if "ppm" in key:
+            if "ppb" in key:
                 try:
                     parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)
                 except ValueError:
                     raise ValueError(f"Cannot convert value of '{key}' to float: {parsed_data[key]}")
+            elif "T_" in key:
+                parsed_data[key] = round(float(parsed_data[key]), 2)
                 
         # Drop items that contain "Unused" in the key
         parsed_data = {key: value for key, value in parsed_data.items() if "Unused" not in key}
