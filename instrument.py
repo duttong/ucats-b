@@ -175,7 +175,7 @@ class TDL_package(QMainWindow):
                     self.pressure = float(data[0].get(self.pressure_var, float("nan")))
                     if self.pressure > self.alt_high:
                         self.alt_high_event.set()
-                        print(f"Pressure of {self.pressure} mbar indicates descent or taxiing.")
+                        #print(f"Pressure of {self.pressure} mbar indicates descent or taxiing.")
 
             except IndexError:
                 pass
