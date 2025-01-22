@@ -22,9 +22,9 @@ devices:
       - temp1
 
   aeris_CO2:
-    inst_num: 1   # don't change this
-    serial_port: /dev/ttyUSB2
-    sim_mode: true
+    inst_num: 2   # don't change this
+    serial_port: /dev/ttyUSB1
+    sim_mode: false
     data_var_prefix: d1_
     display_vars:
       - Det_Bkgd
@@ -33,9 +33,9 @@ devices:
       - CO2_ppm
 
   aeris_CO:
-    inst_num: 2   # don't change this
-    serial_port: /dev/ttyUSB3
-    sim_mode: true
+    inst_num: 1   # don't change this
+    serial_port: /dev/ttyUSB0
+    sim_mode: false
     data_var_prefix: d2_
     display_vars:
       - Det_Bkgd

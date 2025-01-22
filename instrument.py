@@ -116,6 +116,8 @@ class TDL_package(QMainWindow):
         else:
             self.last_saved_datetime = None
 
+        time.sleep(2)
+        
         # Timer for periodic data collection
         self.timer = QTimer()
         self.timer.timeout.connect(self.collect_data)
@@ -154,9 +156,14 @@ class TDL_package(QMainWindow):
         for device_name, device in self.devices.items():
             try:
                 data = device.get_all_data()
+                #print(data)
                 self.streams[device_name] = pd.concat(
                     [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
                 )
+
+                if device_name == 'aeris_CO':
+                    pass
+                    #self.streams['aeris_CO']['d2_N2O_ppm'] *= 1000
 
                 # Update the display panel with the latest data
                 self.display_panel.update_display_data(device_name, data[-1])
