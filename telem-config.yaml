@@ -1,0 +1,10 @@
+iwg_prefix: UCATSB
+ip: 192.168.1.100
+port: 5000
+rate: 5
+variables:
+  - datetime
+  - d1_CO2_ppm
+  - d1_N2O_ppm
+  - d2_CO_ppm
+  - d2_N2O_ppm
