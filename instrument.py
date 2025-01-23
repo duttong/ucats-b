@@ -186,7 +186,10 @@ class TDL_package(QMainWindow):
             if full_data is None:
                 full_data = stream
             else:
-                full_data = pd.merge(full_data, stream, on='datetime', how='outer')
+                try:
+                    full_data = pd.merge(full_data, stream, on='datetime', how='outer')
+                except KeyError:
+                    pass
 
         if full_data is not None:
             # Remove the last N rows
