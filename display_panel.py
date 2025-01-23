@@ -2,7 +2,7 @@ import sys
 import time
 import yaml
 import datetime
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QGridLayout, QApplication
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import Qt
 
@@ -74,12 +74,12 @@ class DisplayPanel(QWidget):
                 row += 1
 
         layout.addLayout(grid)
-        self.co2_reboot_button = QPushButton("Aeris CO2 Reboot")
-        self.co2_reboot_button.clicked.connect(self.aeris_co2_reboot)
+        self.co2_reboot_button = QPushButton("Aeris CO2 Reboot/Shutdown")
+        self.co2_reboot_button.clicked.connect(self.show_co2_options)
         layout.addWidget(self.co2_reboot_button)
 
-        self.co_reboot_button = QPushButton("Aeris CO Reboot")
-        self.co_reboot_button.clicked.connect(self.aeris_co_reboot)
+        self.co_reboot_button = QPushButton("Aeris CO Reboot/Shutdown")
+        self.co_reboot_button.clicked.connect(self.show_co_options)
         layout.addWidget(self.co_reboot_button)
         self.setLayout(layout)
 
@@ -97,29 +97,56 @@ class DisplayPanel(QWidget):
             if label_key in self.data_labels:
                 self.data_labels[label_key].setText(str(var_value))
 
+    def show_menu(self, sensor_type):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle(f"{sensor_type} Control")
+        msg.setText(f"Choose an action for {sensor_type}")
+        cancel_button = msg.addButton("Cancel", QMessageBox.AcceptRole)
+        reboot_button = msg.addButton("Reboot", QMessageBox.RejectRole)
+        shutdown_button = msg.addButton("Shutdown", QMessageBox.DestructiveRole)
+        msg.exec_()
+
+        if msg.clickedButton() == reboot_button:
+            if sensor_type == "Aeris CO2":
+                self.aeris_co2_command("reboot")
+            else:
+                self.aeris_co_command("reboot")
+        elif msg.clickedButton() == shutdown_button:
+            if sensor_type == "Aeris CO2":
+                self.aeris_co2_command("shutdown")
+            else:
+                self.aeris_co_command("shutdown")
+
+    def show_co2_options(self):
+        self.show_menu("Aeris CO2")
+
+    def show_co_options(self):
+        self.show_menu("Aeris CO")
+
     # Entry function for Aeris CO2 Reboot button
-    def aeris_co2_reboot(self):
+    def aeris_co2_command(self, command):
         try:
             aeris_device = self.devices.get('aeris_CO2')
         except AttributeError:
             print("This is a display demo, there are no active devices.")
             return
         if aeris_device:
-            aeris_device.send_command('reboot')
-            print("Aeris CO2 Reboot command sent!")
+            aeris_device.send_command(command)
+            print(f"Aeris CO2 {command} command sent!")
         else:
             print("Aeris CO2 device not found!")
 
     # Entry function for Aeris CO Reboot button
-    def aeris_co_reboot(self):
+    def aeris_co_command(self, command):
         try:
             aeris_device = self.devices.get('aeris_CO')
         except AttributeError:
             print("This is a display demo, there are no active devices.")
             return
         if aeris_device:
-            aeris_device.send_command('reboot')
-            print("Aeris CO Reboot command sent!")
+            aeris_device.send_command(command)
+            print(f"Aeris CO {command} command sent!")
         else:
             print("Aeris CO device not found!")
 
