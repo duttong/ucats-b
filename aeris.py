@@ -24,6 +24,7 @@ class Aeris:
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
+        self.running = False    # keeps track if serial is up and running
         self.ser = None
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
@@ -41,6 +42,7 @@ class Aeris:
             self.variables = [
                 "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "Unknown", "T2_degC", 
                 "N2O_ppm", "H2O_ppm", "CO_ppm", "T3_degC", "Wall_Code"]
+            
         else:
             self.variables = [
                 "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "Unknown1", "T2_degC", 
@@ -66,9 +68,11 @@ class Aeris:
                     bytesize=serial.EIGHTBITS,
                     timeout=self.timeout
                 )
+                self.running = True
                 print(f"Connected to Aeris device on port {self.port}")
             except serial.SerialException as e:
                 print(f"Error connecting to device: {e}")
+                self.running = False
                 self.ser = None
 
     def disconnect(self):
@@ -104,7 +108,7 @@ class Aeris:
                 
                 if self.verbose:
                     d = data.replace('\\n', '')
-                    print(f"Raw data length({len(data)}): {d}")
+                    print(f"Raw data char length({len(data)}): {d}")
 
                 # Data parsing and buffer handling should be outside of serial lock
                 if len(data) > 80:
@@ -136,11 +140,14 @@ class Aeris:
         """
         if not self.sim_mode:
             with self.serial_lock:
-                self.ser.write(command.encode())
-                response = self.ser.readline().decode().strip()
-                self.command_response = response  # Store response
-                if self.verbose:
-                    print(f"Sent: {command}, Received: {response}")
+                if self.running:
+                    self.ser.write(command.encode())
+                    response = self.ser.readline().decode().strip()
+                    self.command_response = response  # Store response
+                    if self.verbose:
+                        print(f"Sent: {command}, Received: {response}")
+                else:
+                    response = 'Aeris offline'
                 return response
         else:
             # Simulate response
