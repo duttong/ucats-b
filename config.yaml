@@ -13,8 +13,7 @@ devices:
     sol_cal: 'CIO1'         # solenoid for cal1 or cal2
     sol_aircal: 'CIO2'      # solenoid for air or cal selection
     pump_aeris: 'CIO3'
-    pump_o3: 'EIO0'
-    pump_h2o: 'EIO2'
+    pumps: 'EIO0'
     power_aerisCO2: 'EIO4'
     power_aerisCO: 'EIO6'
     display_vars:
