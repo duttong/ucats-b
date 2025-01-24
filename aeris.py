@@ -40,19 +40,19 @@ class Aeris:
         if inst_num == 1:
             # CO instrument
             self.variables = [
-                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "Unknown", "T2_degC", 
-                "N2O_ppm", "H2O_ppm", "CO_ppm", "T3_degC", "Wall_Code"]
+                "Unused_0", "P_mbars", "T_gas", "T_ambient", "Unused_1", "Unused_2",
+                "N2O_ppm", "H2O_ppm", "CO_ppm", "T_TEC_Sink", "Unused_3"]
             
         else:
             self.variables = [
-                "Inlet_Number", "P_mbars", "T0_degC", "T1_degC", "Unknown1", "T2_degC", 
-                "big1", "big2", "Unknown2", "win0Fit0", "N2O_ppm",
-                "win0Fit1", "win0Fit2", "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6", 
-                "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0", "win1Fit1", "win1Fit2", 
-                "win1Fit3", "win1Fit4", "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8", 
-                "win1Fit9", "Det_Bkgd", "Ramp_Ampl", "Det_PID_Readout", "H2O_ppm", "CO2_ppm", 
-                "Power_Input_mV", "FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC", 
-                "TEC_Power_W", "Wall_Code", "GPS_Time"]
+                "Unused_0", "P_mbars", "T_gas", "Unused_1", "T_ambient", "Unused_2", "Unused_3", 
+                "Laser_PID_Readout", "Det_PID_Readout", "Unused_4", "Unused_5", "Unused_6",
+                "Unused_7", "Unused_8", "Unused_9", "Unused_10", "Unused_11", "Unused_12", 
+                "Unused_13", "Unused_14", "Unused_15", "Unused_16", "Unused_17", "Unused_18", 
+                "Unused_19", "Unused_20", "Unused_21", "Unused_22", "Unused_23", "Unused_24", 
+                "Ramp_Ampl", "Unused_25", "CO2_ppm", "H2O_ppm", "Unused_26", "N2O_ppm", 
+                "Power_Input_mV", "T_FET", "T_TEC", "T_TEC_Sink", 
+                "TEC_Power", "Unused_27"]
         
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
@@ -176,7 +176,7 @@ class Aeris:
     def parse(self, packet):
         """
         Parse a data packet from the Aeris analyzer and replace the datetime with the computer's
-        datetime.
+        datetime. Also, drop variables demed 'Unused'.
 
         Args:
             packet (str): Raw packet data from the analyzer.
@@ -193,7 +193,6 @@ class Aeris:
         # Replace the Aeris datetime with the current system time (rounded to the nearest second)
         current_datetime = datetime.now().replace(microsecond=0)
         data[0] = current_datetime
-        #data = [current_datetime] + data 
 
         # Apply prefix if provided
         variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
@@ -209,13 +208,12 @@ class Aeris:
         for key in parsed_data.keys():
             if "ppm" in key:
                 try:
-                    if self.inst_num == 1:
-                        parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)
-                    else:
-                        parsed_data[key] = round(float(parsed_data[key]) * 10000, 2)
+                    parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)
                 except ValueError:
                     raise ValueError(f"Cannot convert value of '{key}' to float: {parsed_data[key]}")
-        
+                
+        # Drop items that contain "Unused" in the key
+        parsed_data = {key: value for key, value in parsed_data.items() if "Unused" not in key}
         return parsed_data
     
     def generate_test_data(self):
@@ -231,8 +229,6 @@ class Aeris:
         for var in self.variables:
             if var == "datetime":
                 simulated_data.append(str(current_time))
-            elif var == "Inlet_Number":
-                simulated_data.append("1")
             elif var == "P_mbars":
                 simulated_data.append(f"{round(random.uniform(900, 1100), 2):.2f}")
             elif var.startswith("T"):
@@ -251,24 +247,14 @@ class Aeris:
                 simulated_data.append(f"{round(random.uniform(.1000, .2000), 2):.2f}")
             elif var == "Power_Input_mV":
                 simulated_data.append(f"{round(random.uniform(4.5, 5.5), 2):.2f}")
-            elif var in ["FET_T_degC", "TEC_Temp_degC", "TEC_Sink_Temp_degC"]:
+            elif var in ["T_FET", "T_TEC", "T_TEC_Sink"]:
                 simulated_data.append(f"{round(random.uniform(20, 40), 2):.2f}")
-            elif var == "TEC_Power_W":
+            elif var == "TEC_Power":
                 simulated_data.append(f"{round(random.uniform(0.5, 2.0), 2):.2f}")
-            elif var == "Wall_Code":
-                simulated_data.append(str(random.randint(0, 10)))
-            elif var == "GPS_Time":
-                simulated_data.append(str(current_time.time()))
-            elif var == "Latitude":
-                simulated_data.append(f"{round(random.uniform(-90, 90), 6):.6f}")
-            elif var == "Longitude":
-                simulated_data.append(f"{round(random.uniform(-180, 180), 6):.6f}")
-            elif var == "Alt_m":
-                simulated_data.append(f"{round(random.uniform(0, 5000), 2):.2f}")
-            elif var.startswith("win"):
-                simulated_data.append(f"{round(random.uniform(0, 1), 3):.3f}")
+            else:
+                simulated_data.append("-99")
 
-        packet = "0000,1" + ",".join(simulated_data) + "\r\n"
+        packet = "0000," + ",".join(simulated_data) + "\r\n"
         return packet
     
 
