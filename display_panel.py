@@ -42,18 +42,22 @@ class DisplayPanel(QWidget):
         grid = QGridLayout()
         grid.setSpacing(10)  # Adjust spacing between rows
 
-        row = 0
+        row = [0, 0, 0]
         for device_name, device_info in self.config['devices'].items():
             # Skip the device if 'display_vars' is empty or missing
             if not device_info.get('display_vars'):
                 continue
 
+            colinc = 0
+            if device_name == "h2o_sensor" or device_name == "o3_sensor":
+                colinc = 2
+
             # Device label with larger font and bold style
             device_label = QLabel(f"Device: {device_name}")
             device_label.setFont(QFont('Arial', 16, QFont.Bold))  # Larger, bold font
             device_label.setStyleSheet("color: #2E8B57;")  # Optional: Set color
-            grid.addWidget(device_label, row, 0, 1, 2)  # Span across 2 columns
-            row += 1
+            grid.addWidget(device_label, row[colinc], colinc, 1, 2)  # Span across 2 columns
+            row[colinc] += 1
 
             prefix = self.config['devices'][device_name]['data_var_prefix']
 
@@ -61,25 +65,37 @@ class DisplayPanel(QWidget):
             for var in device_info['display_vars']:
                 var_label = QLabel(f"   {prefix}{var}: ")
                 var_label.setFont(QFont('Arial', 14))  # Smaller font for variable name
-                grid.addWidget(var_label, row, 0, alignment=Qt.AlignLeft)
+                grid.addWidget(var_label, row[colinc], 0+colinc, alignment=Qt.AlignLeft)
 
                 # Create a label to hold the variable's value
                 value_label = QLabel("N/A")
                 value_label.setFont(QFont('Arial', 14))
                 value_label.setStyleSheet("color: #11e;")  # Optional: Blue color for value
-                grid.addWidget(value_label, row, 1, alignment=Qt.AlignRight)
+                grid.addWidget(value_label, row[colinc], 1+colinc, alignment=Qt.AlignRight)
 
                 # Save the label reference to update later
                 self.data_labels[f"{device_name}_{prefix}{var}"] = value_label
-                row += 1
+                row[colinc] += 1
 
         layout.addLayout(grid)
+        self.pumps_tog = QPushButton("Pumps Off")
+        self.pumps_tog.setCheckable(True)  # Makes the button toggle
+        self.pumps_tog.clicked.connect(self.pumps_onoff)
+        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+        layout.addWidget(self.pumps_tog)
+
         self.co2_reboot_button = QPushButton("Aeris CO2 Reboot/Shutdown")
         self.co2_reboot_button.clicked.connect(self.show_co2_options)
+        self.co2_reboot_button.setStyleSheet(
+            "background-color: #FFCCCC; color: black; border: 1px solid #CC9999;"
+        )
         layout.addWidget(self.co2_reboot_button)
 
         self.co_reboot_button = QPushButton("Aeris CO Reboot/Shutdown")
         self.co_reboot_button.clicked.connect(self.show_co_options)
+        self.co_reboot_button.setStyleSheet(
+            "background-color: #FFCCCC; color: black; border: 1px solid #CC9999;"
+        )
         layout.addWidget(self.co_reboot_button)
         self.setLayout(layout)
 
@@ -150,6 +166,17 @@ class DisplayPanel(QWidget):
         else:
             print("Aeris CO device not found!")
 
+    def pumps_onoff(self):
+        jack = self.devices.get('lj')
+        dig = self.config['devices']['labjack']['pumps']
+        if self.pumps_tog.isChecked():
+            self.pumps_tog.setText("Pumps On")
+            self.pumps_tog.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
+            jack.write_digital({dig: 1})
+        else:
+            self.pumps_tog.setText("Pumps Off")
+            self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
+            jack.write_digital({dig: 0})
 
 if __name__ == "__main__":
 
