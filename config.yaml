@@ -9,11 +9,10 @@ devices:
     data_var_prefix: j_     # leave blank for no prefix
 
     pilot: 'FIO6'           # pilot watchdog
-    pilotswitch: 'FIO7'     # pilot on/off switch
+    #pilotswitch: 'FIO7'     # pilot on/off switch
     sol_cal: 'CIO1'         # solenoid for cal1 or cal2
     sol_aircal: 'CIO2'      # solenoid for air or cal selection
-    pump_aeris: 'CIO3'
-    pumps: 'EIO0'
+    pumps: 'FIO7'
     power_aerisCO2: 'EIO4'
     power_aerisCO: 'EIO6'
     display_vars:
