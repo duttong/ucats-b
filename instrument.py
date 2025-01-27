@@ -25,7 +25,7 @@ class TDL_package(QMainWindow):
         self.verbose = verbose
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
-        self.pilot_add = ''     # read from config.yaml
+        self.pilot_wd_add = ''     # read from config.yaml
         self.sol_cal_add = ''
         self.sol_cal = 0
         self.pressure_var = ''
@@ -78,7 +78,7 @@ class TDL_package(QMainWindow):
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
-                self.pilot_add = device_config['pilot']
+                self.pilot_wd_add = device_config['pilo_wd']
                 self.sol_cal_add = device_config['sol_cal']
             else:
                 raise ValueError(f"Unknown device type: {device_name}")
@@ -218,11 +218,13 @@ class TDL_package(QMainWindow):
         print("Data collection stopped.")
 
     def pilot_light(self, cycle=1):
+        # pilot fail light circuit
+        # TODO: add more logic to handle the state of the sensors
         jack = self.devices["labjack"]
         while True:
-            jack.write_digital({self.pilot_add: 0})
+            jack.write_digital({self.pilot_wd_add: 0})
             time.sleep(cycle)
-            jack.write_digital({self.pilot_add: 1})
+            jack.write_digital({self.pilot_wd_add: 1})
             time.sleep(cycle)
 
     # pressure checks

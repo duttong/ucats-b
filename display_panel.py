@@ -2,6 +2,7 @@ import sys
 import time
 import yaml
 import datetime
+import subprocess
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import Qt
@@ -99,6 +100,12 @@ class DisplayPanel(QWidget):
         layout.addWidget(self.co_reboot_button)
         self.setLayout(layout)
 
+        # received a off signal from pilot
+        self.shutdown_trigger = QPushButton("SHUTDOWN")
+        self.shutdown_trigger.clicked.connect(self.shutdown)
+        self.shutdown_trigger.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+        layout.addWidget(self.shutdown_trigger)
+
     def update_time(self, data):
         packet_time = data['datetime'].strftime("%Y-%m-%d %H:%M:%S")
         self.time_label.setText(f"Recent Data Time:\n   {packet_time}")
@@ -177,6 +184,15 @@ class DisplayPanel(QWidget):
             self.pumps_tog.setText("Pumps Off")
             self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
             jack.write_digital({dig: 0})
+
+    def shutdown(self):
+        # tell aeris instruments to shutdown
+        self.aeris_co2_command('shutdown')
+        self.aeris_co_command('shutdown')
+        time.sleep(1)
+        # shutdown Raspberry Pi
+        subprocess.run(["sudo", "shutdown", "-h", "now"])
+
 
 if __name__ == "__main__":
 
