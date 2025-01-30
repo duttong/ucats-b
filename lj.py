@@ -216,21 +216,21 @@ def main():
     parser.add_argument("--low", type=str, help="Sets a digital line low/off.")
     args = parser.parse_args()
 
-    labjack_controller = LabJackController(args.config, verbose=args.verbose)
+    jack = LabJackController(args.config, verbose=args.verbose)
 
     if args.tog:
-        labjack_controller.toggle_digital(args.tog)
+        jack.toggle_digital(args.tog)
     elif args.digin:
-        value = labjack_controller.read_digital(args.digin)
+        value = jack.read_digital(args.digin)
         print(f"Dig {args.digin} is {value}")
     elif args.high:
-        labjack_controller.write_digital({f"{args.high}": 1})
+        jack.write_digital({f"{args.high}": 1})
         print(f"Dig {args.high} set HIGH")
     elif args.low:
-        labjack_controller.write_digital({f"{args.low}": 0})
+        jack.write_digital({f"{args.low}": 0})
         print(f"Dig {args.low} set LOW")
     elif args.config:
-        labjack_controller.run()
+        jack.run()
 
 
 if __name__ == "__main__":
