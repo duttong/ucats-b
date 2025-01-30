@@ -19,39 +19,55 @@ class LabJackController:
             self.config = self._load_config(config_file)
             self.freq = self.config["report"]["freq"]
             self.addresses = self.config["report"]["addresses"]
-        self.handle = self._initialize_labjack()
+        self.handle = self.initialize_labjack()
         self.is_collecting = False
         self.lock = threading.Lock()
         self.data_buffer = []  # Buffer to store incoming data
         self.variables = []
     
-    def _load_config(self, file_path):
+    @staticmethod
+    def _load_config(file_path):
         if file_path:
             with open(file_path, 'r') as file:
-                return yaml.safe_load(file)
+                c = yaml.safe_load(file)['devices']['labjack']
+                return c
             
     def connect(self):
         # entry point for instrument.py
-        self._initialize_labjack()
+        self.initialize_labjack()
 
-    def _initialize_labjack(self):
+    def initialize_labjack(self):
         if self.sim_mode:
             print("Simulating Labjack communications.")
         else:
-            handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if different.
-            self._set_states(handle)
-            print(f"LabJack initialized with handle: {handle}")
-            return handle
-    
-    def _set_states(self, handle):
-        """ Initialization of the labjack state. """
-        # Disable any extended features on FIO7 and FIO6
-        ljm.eWriteName(handle, "DIO7_EF_ENABLE", 0)  # Disable extended features for FIO7
-        ljm.eWriteName(handle, "DIO6_EF_ENABLE", 0)  # Disable extended features for FIO6
+            self.handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if different.
+            self.initialize_digital_lines()
+            print(f"LabJack initialized with handle: {self.handle}")
+            return self.handle
 
-        # Set FIO7 and FIO6 as digital outputs and initial state to LOW
-        ljm.eWriteName(handle, "FIO7", 0)
-        ljm.eWriteName(handle, "FIO6", 0)
+    def initialize_digital_lines(self):
+        """ Initialize all digital lines on the LabJack T4 to LOW (0) state. """
+        
+        # LabJack T4 digital lines: FIO0-7, EIO0-7, CIO0-2 (DIO0-DIO18)
+        digital_lines = [f"DIO{i}" for i in range(19)]  # DIO0 to DIO18
+        
+        # Disable extended features only on supported lines (FIO0-7 and EIO0-7)
+        for i in range(11):  # Skip DIO16-DIO18 (CIO0-2) to avoid errors
+            ljm.eWriteName(self.handle, f"DIO{i}_EF_ENABLE", 0)
+
+        # Set all lines as digital outputs and initialize them to LOW (0)
+        for dio in digital_lines:
+            ljm.eWriteName(self.handle, dio, 0)
+
+        self.set_digital_in()
+
+    def set_digital_in(self):
+        # LabJack T4 digital lines: FIO0-7 (DIO0-7), EIO0-7 (DIO8-15), CIO0-2 (DIO16-DIO18)
+        # TODO: use explicit address in the config file.
+
+        # CIO lines are dedicated input and don't need to be coded.
+        #ljm.eWriteName(self.handle, "DIO1_DIRECTION", 0)  # 0 = Input, 1 = Output
+        return
 
     def read_analog(self):
         analog_readings = {}
@@ -66,17 +82,22 @@ class LabJackController:
                     value = np.polyval(cal[::-1], value)  # Reverse cal to use with np.polyval
                 else:
                     print(f"Invalid calibration for channel {channel}: {cal}. Skipping calibration.")
-            analog_readings[var] = value
-            #analog_readings[f"AIN{channel}"] = value
+            analog_readings[var] = round(value, 3)
         return analog_readings
 
-    def read_digital(self):
+    def read_digital(self, address=None):
+        """ Reads digital channels defined in config.yaml or
+            reads one address defined in the input """
+        if address:
+            value = ljm.eReadName(self.handle, address)
+            return value
+
         digital_readings = {}
-        for line, meta in self.addresses.get("digital", {}).items():
+        for address, meta in self.addresses.get("digital", {}).items():
             var = meta['var']
             if self.prefix:
                 var = f'{self.prefix}{var}'
-            value = ljm.eReadName(self.handle, line)
+            value = ljm.eReadName(self.handle, address)
             digital_readings[var] = value
         return digital_readings
     
@@ -168,7 +189,7 @@ class LabJackController:
         """Toggle a digital line high for one second, then low."""
         print(f"Toggling digital line {line} HIGH for 1 second...")
         ljm.eWriteName(self.handle, line, 1)  # Set the line HIGH
-        time.sleep(2)
+        time.sleep(5)
         ljm.eWriteName(self.handle, line, 0)  # Set the line LOW
         print(f"Digital line {line} toggled LOW.")
 
@@ -189,13 +210,25 @@ def main():
     parser = argparse.ArgumentParser(description="LabJack Controller with Data Collection and Test Options")
     parser.add_argument("--config", type=str, help="Path to the configuration YAML file")
     parser.add_argument('-v', '--verbose', action='store_true', help="Print raw data to stdout")
+    parser.add_argument("--digin", type=str, help="Read a digital line (e.g., CIO0)")
     parser.add_argument("--tog", type=str, help="Toggle a digital line (e.g., EIO0)")
+    parser.add_argument("--high", type=str, help="Sets a digital line high/on.")
+    parser.add_argument("--low", type=str, help="Sets a digital line low/off.")
     args = parser.parse_args()
 
     labjack_controller = LabJackController(args.config, verbose=args.verbose)
 
     if args.tog:
         labjack_controller.toggle_digital(args.tog)
+    elif args.digin:
+        value = labjack_controller.read_digital(args.digin)
+        print(f"Dig {args.digin} is {value}")
+    elif args.high:
+        labjack_controller.write_digital({f"{args.high}": 1})
+        print(f"Dig {args.high} set HIGH")
+    elif args.low:
+        labjack_controller.write_digital({f"{args.low}": 0})
+        print(f"Dig {args.low} set LOW")
     elif args.config:
         labjack_controller.run()
 
