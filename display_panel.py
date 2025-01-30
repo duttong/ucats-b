@@ -30,14 +30,6 @@ class DisplayPanel(QWidget):
         layout.addWidget(self.time_label)
         self.update_time({'datetime': datetime.datetime.now()})
 
-        """
-        self.press_label = QLabel()
-        self.press_label.setText(f"Ambient pressure:")
-        self.press_label.setFont(QFont('Arial', 18, QFont.Bold))  # Bold current time display
-        self.press_label.setStyleSheet("color: #154c79;")  # Black color for current time
-        layout.addWidget(self.press_label)
-        """
-        
         self.data_labels = {}  # Store labels to update later
 
         grid = QGridLayout()
