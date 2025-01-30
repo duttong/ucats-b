@@ -50,11 +50,11 @@ class DisplayPanel(QWidget):
                 continue
 
             colinc = 0
-            if device_name == "h2o_sensor" or device_name == "o3_sensor":
+            if device_name.lower() == "h2o_sensor" or device_name.lower() == "o3_sensor":
                 colinc = 2
 
             # Device label with larger font and bold style
-            device_label = QLabel(f"Device: {device_name}")
+            device_label = QLabel(f"{device_name}")
             device_label.setFont(QFont('Arial', 16, QFont.Bold))  # Larger, bold font
             device_label.setStyleSheet("color: #2E8B57;")  # Optional: Set color
             grid.addWidget(device_label, row[colinc], colinc, 1, 2)  # Span across 2 columns
@@ -186,6 +186,10 @@ class DisplayPanel(QWidget):
             jack.write_digital({dig: 0})
 
     def shutdown(self):
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open("shutdown.txt", "a") as file:
+            file.write(f"{current_time} - Shutdown initiated\n")
+
         # tell aeris instruments to shutdown
         self.aeris_co2_command('shutdown')
         self.aeris_co_command('shutdown')
