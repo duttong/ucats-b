@@ -10,11 +10,11 @@ devices:
     # Digital I/O are on lines FIO0-FIO3, EIO0-EIO3, and CIO0-CIO3
     # Analog Input are on lines AIN0-AIN3
     # There are two 0-5V DACs addressed via DAC0 and DAC1
-    sim_mode: true
+    sim_mode: false
     data_var_prefix: j_     # leave blank for no prefix
 
+    # digouts
     pilot_wd: 'FIO6'        # pilot watchdog
-    #pilot_switch: 'FIO5'    # pilot on/off switch
     sol_cal: 'FIO4'         # solenoid for cal1 or cal2
     sol_aircal: 'FIO5'      # solenoid for air or cal selection
     pumps: 'FIO7'           # pumps on/off
@@ -32,13 +32,13 @@ devices:
         # The list of numbers in cal are coefficients for a polynomial.
         # [intercept, slope, quadratic, etc.]
         analog:
-          0:
+          AIN0:
             var: 'amb_press'
             cal: [0, 1]  
-          1:
+          AIN1:
             var: 'pump_speed'
             cal: [0, 10, 2]
-          2:
+          AIN2:
             var: 'temp1'
             cal: [0, 1]
         digital:
@@ -70,7 +70,7 @@ devices:
       - N2O_ppb
       - CO_ppb
  
-  o3_sensor:
+  O3_sensor:
     serial_port: /dev/ttyUSB1
     sim_mode: false
     data_var_prefix: oz_
@@ -79,7 +79,7 @@ devices:
       - p
       - o3
    
-  h2o_sensor:
+  H2O_sensor:
     serial_port: /dev/ttyUSB1
     sim_mode: true
     data_var_prefix: w_

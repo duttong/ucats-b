@@ -15,23 +15,42 @@ class LabJackController:
         self.prefix = prefix
         self.sim_mode = sim_mode
         self.verbose = verbose
+        self.variables = []
         if config_file is not None:
             self.config = self._load_config(config_file)
             self.freq = self.config["report"]["freq"]
             self.addresses = self.config["report"]["addresses"]
+            self.variables = self.extract_labjack_variables()
         self.handle = self.initialize_labjack()
         self.is_collecting = False
         self.lock = threading.Lock()
         self.data_buffer = []  # Buffer to store incoming data
-        self.variables = []
-    
+
     @staticmethod
     def _load_config(file_path):
         if file_path:
             with open(file_path, 'r') as file:
                 c = yaml.safe_load(file)['devices']['labjack']
                 return c
-            
+
+    def extract_labjack_variables(self):
+        # Extract digout variables (keys in labjack dictionary before 'report')
+        digout_vars = [key for key in self.config.keys() if key not in ['sim_mode', 'data_var_prefix', 'display_vars', 'report']]
+        
+        # Extract digital input variables from report section
+        digin_vars = [entry['var'] for entry in self.config.get('report', {}).get('addresses', {}).get('digital', {}).values() if 'var' in entry]
+        
+        # Extract analog input variables from report section
+        analog_vars = [entry['var'] for entry in self.config.get('report', {}).get('addresses', {}).get('analog', {}).values() if 'var' in entry]
+        
+        vars = {
+            'digout': digout_vars,
+            'digin': digin_vars,
+            'analog': analog_vars
+        }
+
+        return digout_vars + digin_vars + analog_vars
+
     def connect(self):
         # entry point for instrument.py
         self.initialize_labjack()
@@ -75,7 +94,7 @@ class LabJackController:
             var, cal = meta['var'], meta['cal']
             if self.prefix:
                 var = f'{self.prefix}{var}'
-            value = ljm.eReadName(self.handle, f"AIN{channel}")
+            value = ljm.eReadName(self.handle, f"{channel}")
             if cal:
                 # Ensure cal is a list of numbers and apply as a polynomial
                 if isinstance(cal, list) and all(isinstance(c, (int, float)) for c in cal):

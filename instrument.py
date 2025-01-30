@@ -23,9 +23,11 @@ class TDL_package(QMainWindow):
     def __init__(self, config_file='config.yaml', stream_size=100, verbose=False):
         super().__init__()
         self.verbose = verbose
+        self.config_file = config_file
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
         self.pilot_wd_add = ''     # read from config.yaml
+        self.pilot_switch = False
         self.sol_cal_add = ''
         self.sol_cal = 0
         self.pressure_var = ''
@@ -34,6 +36,7 @@ class TDL_package(QMainWindow):
         self.alt_low_event = threading.Event()      # below low alt threshold
         self.alt_high = 0       # mbar (these values are loaded from config.yaml)
         self.alt_low = 5000     # mbar
+        self.start_time = datetime.now()
         self.extra_vars = {'sol_cal': self.sol_cal}       # extra variables for the .csv file.
 
         self.setWindowTitle("UCATS-B")
@@ -74,11 +77,11 @@ class TDL_package(QMainWindow):
                 )
             elif device_name.lower() == 'labjack':
                 device = LabJackController(
-                    config_file=device_config['table'],
+                    config_file=self.config_file,
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
-                self.pilot_wd_add = device_config['pilo_wd']
+                self.pilot_wd_add = device_config['pilot_wd']
                 self.sol_cal_add = device_config['sol_cal']
             else:
                 raise ValueError(f"Unknown device type: {device_name}")
@@ -90,7 +93,7 @@ class TDL_package(QMainWindow):
 
             # Store prefixed variables in self.vars instead of modifying the device instance
             self.vars[device_name] = [
-                f"{device_config['data_var_prefix']}{v}" for v in device.variables
+                f"{device_config['data_var_prefix']}{v}" for v in device.variables if "unused" not in v.lower()
             ]
             self.all_variables.update(self.vars[device_name])
 
@@ -124,6 +127,7 @@ class TDL_package(QMainWindow):
 
         # start pilot light and pressure triggers
         threading.Thread(target=self.pilot_light, daemon=True).start()
+        threading.Thread(target=self.pilot_off_switch, daemon=True).start()
         threading.Thread(target=self.altitude_monitor, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
@@ -161,10 +165,6 @@ class TDL_package(QMainWindow):
                     [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
                 )
 
-                if device_name == 'aeris_CO':
-                    pass
-                    #self.streams['aeris_CO']['d2_N2O_ppm'] *= 1000
-
                 # Update the display panel with the latest data
                 self.display_panel.update_display_data(device_name, data[-1])
                 if device_name == 'aeris_CO2':
@@ -176,6 +176,11 @@ class TDL_package(QMainWindow):
                     if self.pressure > self.alt_high:
                         self.alt_high_event.set()
                         #print(f"Pressure of {self.pressure} mbar indicates descent or taxiing.")
+                
+                elif device_name == "labjack":
+                    # pilot switch variable name with prefix from config file
+                    switch = f"{self.config['devices']['labjack']['data_var_prefix']}pilot_power"
+                    self.pilot_switch = data[0].get(switch, float("nan"))
 
             except IndexError:
                 pass
@@ -226,6 +231,18 @@ class TDL_package(QMainWindow):
             time.sleep(cycle)
             jack.write_digital({self.pilot_wd_add: 1})
             time.sleep(cycle)
+
+    def pilot_off_switch(self):
+        """ If the pilot turns the switch to ucats-b off. Quickly shutdown.
+            Start checking after the program has been running for 10 seconds or more.
+        """
+        elapsed_time = (datetime.now() - self.start_time).total_seconds()
+        if elapsed_time < 10:
+            return
+        
+        if self.pilot_switch == 0:
+            # TODO: Should this value be 0 for more than 1 second?
+            self.display_panel.shutdown()
 
     # pressure checks
     def altitude_monitor(self):
