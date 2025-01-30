@@ -14,12 +14,11 @@ class LabJackController:
     def __init__(self, config_file=None, prefix=None, sim_mode=False, verbose=False):
         self.prefix = prefix
         self.sim_mode = sim_mode
+        self.freq = 1       # read every second
         self.verbose = verbose
         self.variables = []
         if config_file is not None:
             self.config = self._load_config(config_file)
-            self.freq = self.config["report"]["freq"]
-            self.addresses = self.config["report"]["addresses"]
             self.variables = self.extract_labjack_variables()
         self.handle = self.initialize_labjack()
         self.is_collecting = False
@@ -28,29 +27,58 @@ class LabJackController:
 
     @staticmethod
     def _load_config(file_path):
+        # loads only the labjack section
         if file_path:
             with open(file_path, 'r') as file:
-                c = yaml.safe_load(file)['devices']['labjack']
-                return c
+                return yaml.safe_load(file)['devices']['labjack']
 
     def extract_labjack_variables(self):
-        # Extract digout variables (keys in labjack dictionary before 'report')
-        digout_vars = [key for key in self.config.keys() if key not in ['sim_mode', 'data_var_prefix', 'display_vars', 'report']]
+        """
+        Extracts all variable names from the Labjack section in the YAML configuration file.
         
-        # Extract digital input variables from report section
-        digin_vars = [entry['var'] for entry in self.config.get('report', {}).get('addresses', {}).get('digital', {}).values() if 'var' in entry]
+        Args:
+            file_path (str): Path to the YAML configuration file.
         
-        # Extract analog input variables from report section
-        analog_vars = [entry['var'] for entry in self.config.get('report', {}).get('addresses', {}).get('analog', {}).values() if 'var' in entry]
+        Returns:
+            list: A list of all variable names in the Labjack section.
+        """
+        variables = []
         
-        vars = {
-            'digout': digout_vars,
-            'digin': digin_vars,
-            'analog': analog_vars
-        }
+        # Extract variables from digouts
+        variables.extend(self.config.get('digouts', {}).values())
+        
+        # Extract variables from digins
+        try:
+            variables.extend(self.config.get('digins', {}).values())
+        except AttributeError:
+            pass
+        
+        # Extract variables from analog section
+        for analog in self.config.get('analog', {}).values():
+            var_name = analog.get('var')
+            if var_name:
+                variables.append(var_name)
+        
+        return variables
 
-        return digout_vars + digin_vars + analog_vars
+    def get_labjack_address(self, variable_name):
+        # Search in analog inputs
+        for key, value in self.config.get("analog", {}).items():
+            if isinstance(value, dict) and value.get("var") == variable_name:
+                return key  # Return the analog input address (e.g., "AIN1")
 
+        # Search in digital inputs
+        for key, value in self.config.get("digins", {}).items():
+            if value == variable_name:
+                return key  # Return the digital input address (e.g., "CIO0")
+
+        # Search in digital outputs
+        for key, value in self.config.get("digouts", {}).items():
+            if value == variable_name:
+                return key  # Return the digital output address (e.g., "FIO6")
+
+        return None  # Variable not found
+   
     def connect(self):
         # entry point for instrument.py
         self.initialize_labjack()
@@ -90,7 +118,7 @@ class LabJackController:
 
     def read_analog(self):
         analog_readings = {}
-        for channel, meta in self.addresses.get("analog", {}).items():
+        for channel, meta in (self.config.get("analog") or {}).items():
             var, cal = meta['var'], meta['cal']
             if self.prefix:
                 var = f'{self.prefix}{var}'
@@ -112,8 +140,7 @@ class LabJackController:
             return value
 
         digital_readings = {}
-        for address, meta in self.addresses.get("digital", {}).items():
-            var = meta['var']
+        for address, var in (self.config.get("digins") or {}).items():
             if self.prefix:
                 var = f'{self.prefix}{var}'
             value = ljm.eReadName(self.handle, address)

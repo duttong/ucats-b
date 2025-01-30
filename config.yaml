@@ -12,41 +12,36 @@ devices:
     # There are two 0-5V DACs addressed via DAC0 and DAC1
     sim_mode: false
     data_var_prefix: j_     # leave blank for no prefix
-
-    # digouts
-    pilot_wd: 'FIO6'        # pilot watchdog
-    sol_cal: 'FIO4'         # solenoid for cal1 or cal2
-    sol_aircal: 'FIO5'      # solenoid for air or cal selection
-    pumps: 'FIO7'           # pumps on/off
-    power_aerisCO2: 'EIO4'
-    power_aerisCO: 'EIO6'
     display_vars:
       - pilot_power
       - temp1
 
-    report:
-      # report is used for data read and record from the labjack
-      freq: 1  # seconds
-      addresses:
-        # Analog Input Configuration
-        # The list of numbers in cal are coefficients for a polynomial.
-        # [intercept, slope, quadratic, etc.]
-        analog:
-          AIN0:
-            var: 'amb_press'
-            cal: [0, 1]  
-          AIN1:
-            var: 'pump_speed'
-            cal: [0, 10, 2]
-          AIN2:
-            var: 'temp1'
-            cal: [0, 1]
-        digital:
-          # Digital Input read
-          CIO0:
-            var: 'pilot_power'
-          #EIO1: 
-          #  var: 'digIN1' 
+    digouts:
+      # variables used in instrument.py
+      FIO6: 'pilot_wd'
+      FIO4: 'sol_cal'
+      FIO5: 'sol_aircal'
+      FIO7: 'pumps'
+      EIO4: 'power_aerisCO2'
+      EIO6: 'power_aerisCO'
+
+    digins:
+      # these addresses are read every second
+      CIO0: 'pilot_power'
+
+    analog:
+      # read once a second
+      # The list of numbers in cal are coefficients for a polynomial.
+      # [intercept, slope, quadratic, etc.]
+      AIN0:
+        var: 'amb_press'
+        cal: [0, 1]  
+      AIN1:
+        var: 'pump_speed'
+        cal: [0, 10, 2]
+      AIN2:
+        var: 'temp1'
+        cal: [0, 1]
 
   aeris_CO2:
     inst_num: 2   # don't change this

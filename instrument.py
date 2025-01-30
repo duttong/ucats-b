@@ -26,7 +26,7 @@ class TDL_package(QMainWindow):
         self.config_file = config_file
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
-        self.pilot_wd_add = ''     # read from config.yaml
+        self.pilot_wd_add = ''
         self.pilot_switch = False
         self.sol_cal_add = ''
         self.sol_cal = 0
@@ -81,8 +81,8 @@ class TDL_package(QMainWindow):
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
-                self.pilot_wd_add = device_config['pilot_wd']
-                self.sol_cal_add = device_config['sol_cal']
+                self.pilot_wd_add = device.get_labjack_address('pilot_wd')
+                self.sol_cal_add = device.get_labjack_address('sol_cal')
             else:
                 raise ValueError(f"Unknown device type: {device_name}")
             
@@ -134,7 +134,7 @@ class TDL_package(QMainWindow):
         """ Load the configuration from a YAML file """
         with open(file_path, 'r') as file:
             return yaml.safe_load(file)
-    
+
     def create_filename(self, prefix="ucatsb"):
         # Get the current date and hour
         current_time = datetime.now()
@@ -228,6 +228,7 @@ class TDL_package(QMainWindow):
         jack = self.devices["labjack"]
         while True:
             jack.write_digital({self.pilot_wd_add: 0})
+
             time.sleep(cycle)
             jack.write_digital({self.pilot_wd_add: 1})
             time.sleep(cycle)
