@@ -2,18 +2,11 @@
 # prefixes are defined in the config.yaml file.
 #
 # Aeris d1: 
-#     d1_Inlet_Number, d1_P_mbars, d1_T0_degC, d1_T1_degC, d1_T2_degC, 
-#     d1_T5_degC, d1_Tgas_degC, d1_Laser_PID_Readout, d1_Det_PID_Readout, 
-#     d1_Det_Bkgd, d1_Ramp_Ampl, d1_N2O_ppm, d1_H2O_ppm, d1_CO_ppm, 
-#     d1_Power_Input_mV, d1_FET_T_degC, d1_TEC_Temp_degC, d1_TEC_Sink_Temp_degC, 
-#     d1_TEC_Power_W, d1_GPS_Time, d1_Latitude, d1_Longitude, d1_Alt_m, 
-#     d1_win0Fit0, d1_win1Fit0, d1_win0Fit1, d1_win1Fit1, d1_win0Fit2, 
-#     d1_win1Fit2, d1_win0Fit3, d1_win1Fit3, d1_win0Fit4, d1_win1Fit4, 
-#     d1_win0Fit5, d1_win1Fit5, d1_win0Fit6, d1_win1Fit6, d1_win0Fit7, 
-#     d1_win1Fit7, d1_win0Fit8, d1_win1Fit8, d1_win0Fit9, d1_win1Fit9, 
-#     d1_Wall_Code
+#   P_mbars, T_gas, T_ambient, N2O_ppb, H2O_ppm, CO_ppb, T_TEC_Sink
 # Aeris d2:
-#     The same variables and d2_CO2_ppm instead of CO
+#   P_mbars, T_gas, T_ambient, Laser_PID_Readout, Det_PID_Readout, 
+#   Ramp_Ampl, CO2_ppm, H2O_ppm, N2O_ppb, Power_Input_mV, 
+#   T_FET, T_TEC, T_TEC_Sink, TEC_Power
 # 2Btech Ozone:
 #     oz_o3, oz_t, oz_p, oz_flow_a, oz_flow_b
 # Maycomm: 
