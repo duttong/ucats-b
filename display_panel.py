@@ -111,7 +111,7 @@ class DisplayPanel(QWidget):
 
     def update_time(self, data):
         packet_time = data['datetime'].strftime("%Y-%m-%d %H:%M:%S")
-        self.time_label.setText(f"Recent Data Time:\n   {packet_time}")
+        self.time_label.setText(f"{packet_time}")
         self.time_label.setFont(QFont('Arial', 18, QFont.Bold))  # Bold current time display
         self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
 
