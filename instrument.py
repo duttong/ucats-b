@@ -278,9 +278,10 @@ class TDL_package(QMainWindow):
             self.lj_digout('pilot_wd', 1)
             time.sleep(cycle)
 
-        # Monitor Aeris sensors for data. If no data is received consecutively, trigger the fail condition.
+        # Monitor Aeris and O3 sensors for data. If no data is received consecutively, trigger the fail condition.
         a1_empty_count = 0
         a2_empty_count = 0
+        o3_empty_count = 0
         
         print('Fail Light: Monitoring Aeris now')
         while True:
@@ -293,6 +294,7 @@ class TDL_package(QMainWindow):
             # Read data from sensors
             a1 = self.streams['aeris_co2']
             a2 = self.streams['aeris_co']
+            o3 = self.streams['o3_sensor']
 
             # Update empty count for CO2 sensor
             a1_empty_count = a1_empty_count + 1 if a1.empty else 0
@@ -300,9 +302,15 @@ class TDL_package(QMainWindow):
             # Update empty count for CO sensor
             a2_empty_count = a2_empty_count + 1 if a2.empty else 0
 
+            # Update empty count for O3 sensor
+            o3_empty_count = o3_empty_count + 1 if o3.empty else 0
+
             # Break loop if consecutive empty readings exceed threshold
             if a1_empty_count > max_missing_data or a2_empty_count > max_missing_data:
                 print(f'Fail Light: Aeris offline #1 {a1_empty_count}, #2 {a2_empty_count}')
+                break
+            elif o3_empty_count > max_missing_data:
+                print(f'Fail Light: O3 offline {o3_empty_count}')
                 break
     
         # This is a failed condition. Don't toggle the pilot_wd line.
