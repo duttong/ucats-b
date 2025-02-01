@@ -296,13 +296,9 @@ class TDL_package(QMainWindow):
             a2 = self.streams['aeris_co']
             o3 = self.streams['o3_sensor']
 
-            # Update empty count for CO2 sensor
+            # Update empty count for sensors
             a1_empty_count = a1_empty_count + 1 if a1.empty else 0
-
-            # Update empty count for CO sensor
             a2_empty_count = a2_empty_count + 1 if a2.empty else 0
-
-            # Update empty count for O3 sensor
             o3_empty_count = o3_empty_count + 1 if o3.empty else 0
 
             # Break loop if consecutive empty readings exceed threshold
