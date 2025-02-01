@@ -68,12 +68,12 @@ class DisplayPanel(QWidget):
             # For each display variable, add a QLabel for both the name and the value
             for var in device_info['display_vars']:
                 var_label = QLabel(f"   {prefix}{var}: ")
-                var_label.setFont(QFont('Arial', 14))  # Smaller font for variable name
+                var_label.setFont(QFont('Arial', 12))  # Smaller font for variable name
                 grid.addWidget(var_label, row[colinc], 0+colinc, alignment=Qt.AlignLeft)
 
                 # Create a label to hold the variable's value
                 value_label = QLabel("N/A")
-                value_label.setFont(QFont('Arial', 14))
+                value_label.setFont(QFont('Arial', 12))
                 value_label.setStyleSheet("color: #11e;")  # Optional: Blue color for value
                 grid.addWidget(value_label, row[colinc], 1+colinc, alignment=Qt.AlignRight)
 
@@ -105,7 +105,7 @@ class DisplayPanel(QWidget):
 
         # received a off signal from pilot
         self.shutdown_trigger = QPushButton("SHUTDOWN")
-        self.shutdown_trigger.clicked.connect(self.shutdown)
+        self.shutdown_trigger.clicked.connect(self.shutdown_menu)
         self.shutdown_trigger.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
         layout.addWidget(self.shutdown_trigger)
 
@@ -193,15 +193,27 @@ class DisplayPanel(QWidget):
             self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
             jack.write_digital({dig: 0})
 
+    def shutdown_menu(self, sensor_type):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle(f"Shutdown UCATS-B")
+        msg.setText("Cancel or start Shutdown")
+        cancel_button = msg.addButton("Cancel", QMessageBox.AcceptRole)
+        shutdown_button = msg.addButton("Shutdown", QMessageBox.DestructiveRole)
+        msg.exec_()
+
+        if msg.clickedButton() == shutdown_button:
+            self.shutdown()
+
     def shutdown(self):
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open("shutdown.txt", "a") as file:
             file.write(f"{current_time} - Shutdown initiated\n")
 
         # tell aeris instruments to shutdown
         self.aeris_co2_command('shutdown')
         self.aeris_co_command('shutdown')
-        time.sleep(1)
+        time.sleep(0.2)
         # shutdown Raspberry Pi
         subprocess.run(["sudo", "shutdown", "-h", "now"])
 
