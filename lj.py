@@ -30,7 +30,7 @@ class LabJackController:
         # loads only the labjack section
         if file_path:
             with open(file_path, 'r') as file:
-                return yaml.safe_load(file)['devices']['labjack']
+                return yaml.safe_load(file)['devices']['Labjack']
 
     def extract_labjack_variables(self):
         """

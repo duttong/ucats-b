@@ -4,7 +4,7 @@ triggers:
 
 devices:
   
-  labjack:
+  Labjack:
     # Labjack control
     # UCATS-B uses a T4 Labjack with 12 DIO, 4 A2D, and 2 DAC lines.
     # Digital I/O are on lines FIO0-FIO3, EIO0-EIO3, and CIO0-CIO3
@@ -43,7 +43,7 @@ devices:
         var: 'temp1'
         cal: [0, 1]
 
-  aeris_CO2:
+  Aeris_CO2:
     inst_num: 2   # don't change this
     serial_port: /dev/ttyUSB0
     sim_mode: false
@@ -54,7 +54,7 @@ devices:
       - N2O_ppb
       - CO2_ppm
 
-  aeris_CO:
+  Aeris_CO:
     inst_num: 1   # don't change this
     serial_port: /dev/ttyUSB2
     sim_mode: false

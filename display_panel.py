@@ -142,7 +142,7 @@ class DisplayPanel(QWidget):
     # Entry function for Aeris CO2 Reboot button
     def aeris_co2_command(self, command):
         try:
-            aeris_device = self.devices.get('aeris_CO2')
+            aeris_device = self.devices.get('Aeris_CO2')
         except AttributeError:
             print("This is a display demo, there are no active devices.")
             return
@@ -155,7 +155,7 @@ class DisplayPanel(QWidget):
     # Entry function for Aeris CO Reboot button
     def aeris_co_command(self, command):
         try:
-            aeris_device = self.devices.get('aeris_CO')
+            aeris_device = self.devices.get('Aeris_CO')
         except AttributeError:
             print("This is a display demo, there are no active devices.")
             return
@@ -166,8 +166,8 @@ class DisplayPanel(QWidget):
             print("Aeris CO device not found!")
 
     def pumps_onoff(self):
-        jack = self.devices.get('lj')
-        dig = self.config['devices']['labjack']['pumps']
+        jack = self.devices.get('Labjack')
+        dig = jack.get_labjack_address('pumps')
         if self.pumps_tog.isChecked():
             self.pumps_tog.setText("Pumps On")
             self.pumps_tog.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  

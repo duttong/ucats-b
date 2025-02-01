@@ -26,10 +26,7 @@ class TDL_package(QMainWindow):
         self.config_file = config_file
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
-        self.pilot_wd_add = ''
         self.pilot_switch = False
-        self.sol_cal_add = ''
-        self.sol_cal = 0
         self.pressure_var = ''
         self.pressure = 1200.0
         self.alt_high_event = threading.Event()     # above high alt threshold
@@ -37,7 +34,8 @@ class TDL_package(QMainWindow):
         self.alt_high = 0       # mbar (these values are loaded from config.yaml)
         self.alt_low = 5000     # mbar
         self.start_time = datetime.now()
-        self.extra_vars = {'sol_cal': self.sol_cal}       # extra variables for the .csv file.
+        #self.extra_vars = {'sol_cal': self.sol_cal}       # extra variables for the .csv file.\
+        self.extra_vars = {}
 
         self.setWindowTitle("UCATS-B")
         self.setGeometry(100, 100, 250, 350)
@@ -81,8 +79,6 @@ class TDL_package(QMainWindow):
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode']
                 )
-                self.pilot_wd_add = device.get_labjack_address('pilot_wd')
-                self.sol_cal_add = device.get_labjack_address('sol_cal')
             else:
                 raise ValueError(f"Unknown device type: {device_name}")
             
@@ -155,7 +151,6 @@ class TDL_package(QMainWindow):
             QTimer.singleShot(run_duration * 1000, self.stop_collection)
 
     def collect_data(self):
-
         # Fetch data and append to respective streams
         for device_name, device in self.devices.items():
             try:
@@ -225,12 +220,13 @@ class TDL_package(QMainWindow):
     def pilot_light(self, cycle=1):
         # pilot fail light circuit
         # TODO: add more logic to handle the state of the sensors
-        jack = self.devices["labjack"]
-        while True:
-            jack.write_digital({self.pilot_wd_add: 0})
+        jack = self.devices["Labjack"]
+        pilot_wd_add = jack.get_labjack_address('pilot_wd')
 
+        while True:
+            jack.write_digital({pilot_wd_add: 0})
             time.sleep(cycle)
-            jack.write_digital({self.pilot_wd_add: 1})
+            jack.write_digital({pilot_wd_add: 1})
             time.sleep(cycle)
 
     def pilot_off_switch(self):
@@ -263,17 +259,17 @@ class TDL_package(QMainWindow):
         print("Plane has reached altitude.")
         jack = self.devices["labjack"]
         self.alt_low_event.clear()
+        sol_cal_add = jack.get_labjack_address('sol_cal')
+        sol_calair_add = jack.get_labjack_address('sol_aircal')
 
-        # cycle the cal solenoid while at altitude
         while True:  # Stay in the loop until the plane descends
-
             # Solenoid cycling logic
-            jack.write_digital({self.sol_cal_add: 1})
+            jack.write_digital({sol_cal_add: 1})
             print('sol cal/air high')
             self.extra_vars['sol_cal'] = 1
             if self.alt_high_event.wait(10):
                 break
-            jack.write_digital({self.sol_cal_add: 0})
+            jack.write_digital({sol_cal_add: 0})
             self.extra_vars['sol_cal'] = 0
             print('sol cal/air low')
             if self.alt_high_event.wait(10):
@@ -284,11 +280,12 @@ class TDL_package(QMainWindow):
 
     def below_altitude(self):
         print("Plane is descending or taxiing.")
-        jack = self.devices["labjack"]
+        jack = self.devices["Labjack"]
+        sol_cal_add = jack.get_labjack_address('sol_cal')
         self.alt_high_event.clear()
         self.alt_low_event.set()
         # Perform actions during descent or post-landing
-        jack.write_digital({self.sol_cal_add: 0})
+        jack.write_digital({sol_cal_add: 0})
         self.extra_vars['sol_cal'] = 0
 
 def main():
