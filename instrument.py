@@ -29,6 +29,8 @@ class TDL_package(QMainWindow):
         self.pilot_switch = False
         self.pressure_var = ''      # determined from o3_sensor
         self.pressure = 1200.0
+        self.lj_digouts = {}        # keep a dict of digouts
+        self.lj_prefix = self.config['devices']['labjack']['data_var_prefix']
         self.alt_high_event = threading.Event()     # above high alt threshold
         self.alt_low_event = threading.Event()      # below low alt threshold
         self.alt_high = 0       # mbar (these values are loaded from config.yaml)
@@ -130,7 +132,17 @@ class TDL_package(QMainWindow):
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
         with open(file_path, 'r') as file:
-            return yaml.safe_load(file)
+            c = yaml.safe_load(file)
+            c = self.lowercase_keys(c)
+            return c
+        
+    def lowercase_keys(self, data):
+        if isinstance(data, dict):
+            return {k.lower(): self.lowercase_keys(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self.lowercase_keys(i) for i in data]
+        else:
+            return data
 
     def create_filename(self, prefix="ucatsb"):
         # Get the current date and hour
@@ -157,7 +169,10 @@ class TDL_package(QMainWindow):
         for device_name, device in self.devices.items():
             try:
                 data = device.get_all_data()
-                #print(device_name, data)
+                if device_name == 'labjack':
+                    # get_all_data from labjack will only return digins and analog
+                    # the digouts are maintained as a dict in instrument.py
+                    data = [data[0] | self.lj_digouts]
                 self.streams[device_name] = pd.concat(
                     [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
                 )
@@ -176,7 +191,7 @@ class TDL_package(QMainWindow):
                 
                 elif device_name == "labjack":
                     # pilot switch variable name with prefix from config file
-                    switch = f"{self.config['devices']['Labjack']['data_var_prefix']}pilot_power"
+                    switch = f"{self.lj_prefix}pilot_power"
                     self.pilot_switch = data[0].get(switch, float("nan"))
 
             except IndexError:
@@ -220,16 +235,21 @@ class TDL_package(QMainWindow):
             device.disconnect()
         print("Data collection stopped.")
 
+    def lj_digout(self, variable, state):
+        """ Send a state (0 or 1) to the labjack. Save the new state in self.lj_digouts """
+        jack = self.devices['labjack']
+        address = jack.get_labjack_address(variable)
+        jack.write_digital({address: state})
+        self.lj_digouts[f'{self.lj_prefix}{variable}'] = state
+
     def pilot_light(self, cycle=1):
-        # pilot fail light circuit
-        # TODO: add more logic to handle the state of the sensors
-        jack = self.devices["labjack"]
-        pilot_wd_add = jack.get_labjack_address('pilot_wd')
+        """ pilot fail light circuit
+            TODO: add more logic to handle the state of the sensors """
 
         while True:
-            jack.write_digital({pilot_wd_add: 0})
+            self.lj_digout('pilot_wd', 0)
             time.sleep(cycle)
-            jack.write_digital({pilot_wd_add: 1})
+            self.lj_digout('pilot_wd', 1)
             time.sleep(cycle)
 
     def pilot_off_switch(self):
@@ -260,22 +280,27 @@ class TDL_package(QMainWindow):
 
     def at_altitude(self):
         print("Plane has reached altitude.")
-        jack = self.devices["labjack"]
         self.alt_low_event.clear()
-        sol_cal_add = jack.get_labjack_address('sol_cal')
-        sol_calair_add = jack.get_labjack_address('sol_aircal')
 
         while True:  # Stay in the loop until the plane descends
             # Solenoid cycling logic
-            jack.write_digital({sol_cal_add: 1})
-            print('sol cal/air high')
-            self.extra_vars['sol_cal'] = 1
-            if self.alt_high_event.wait(10):
+            # cal1
+            self.lj_digout('sol_cal', 0)
+            self.lj_digout('sol_aircal', 1) 
+            print('cal1')
+            if self.alt_high_event.wait(20):
                 break
-            jack.write_digital({sol_cal_add: 0})
-            self.extra_vars['sol_cal'] = 0
-            print('sol cal/air low')
-            if self.alt_high_event.wait(10):
+
+            self.lj_digout('sol_cal', 1)
+            self.lj_digout('sol_aircal', 1) 
+            print('cal2')
+            if self.alt_high_event.wait(20):
+                break
+
+            self.lj_digout('sol_cal', 0)
+            self.lj_digout('sol_aircal', 0) 
+            print('air')
+            if self.alt_high_event.wait(300):
                 break
 
         print("Exiting cruising altitude actions.")
@@ -283,13 +308,11 @@ class TDL_package(QMainWindow):
 
     def below_altitude(self):
         print("Plane is descending or taxiing.")
-        jack = self.devices["labjack"]
-        sol_cal_add = jack.get_labjack_address('sol_cal')
         self.alt_high_event.clear()
         self.alt_low_event.set()
         # Perform actions during descent or post-landing
-        jack.write_digital({sol_cal_add: 0})
-        self.extra_vars['sol_cal'] = 0
+        self.lj_digout('sol_cal', 0)
+        self.lj_digout('sol_aircal', 0) 
 
 def main():
     # Create the argument parser

@@ -17,13 +17,15 @@ class LabJackController:
         self.freq = 1       # read every second
         self.verbose = verbose
         self.variables = []
-        if config_file is not None:
-            self.config = self._load_config(config_file)
-            self.variables = self.extract_labjack_variables()
+        self.digout_states = {}  # keeps track of the most recent set dig state
         self.handle = self.initialize_labjack()
         self.is_collecting = False
         self.lock = threading.Lock()
         self.data_buffer = []  # Buffer to store incoming data
+        if config_file is not None:
+            self.config = self._load_config(config_file)
+            self.variables = self.extract_labjack_variables()
+            self.digout_states = self.config.get('digouts', {})
 
     @staticmethod
     def _load_config(file_path):
@@ -144,7 +146,7 @@ class LabJackController:
             if self.prefix:
                 var = f'{self.prefix}{var}'
             value = ljm.eReadName(self.handle, address)
-            digital_readings[var] = value
+            digital_readings[var] = bool(value)
         return digital_readings
     
     def write_digital(self, digital_writes):
@@ -153,18 +155,25 @@ class LabJackController:
         
         Args:
             digital_writes (dict): A dictionary where keys are pin names (e.g., "FIO0") 
-                                and values are 0 (LOW) or 1 (HIGH).
+                                   and values are 0 (LOW) or 1 (HIGH).
         """
-        for line, value in digital_writes.items():
+        for address, value in digital_writes.items():
             if value not in [0, 1]:
-                raise ValueError(f"Invalid value for digital write on {line}: {value}. Must be 0 or 1.")
+                raise ValueError(f"Invalid value for digital write on {address}: {value}. Must be 0 or 1.")
             
             if not self.sim_mode:
                 with self.lock:
                     # Write the specified value to the digital line
                     #print(f'{line} = {value}')
-                    ljm.eWriteName(self.handle, line, value)
+                    ljm.eWriteName(self.handle, address, value)
 
+                # record state in digout variable name
+                for add, var in (self.config.get("outs") or {}).items():
+                    if add == address:
+                        if self.prefix:
+                            var = f'{self.prefix}{var}'
+                        self.digout_states[var] = value
+                  
     def _collect_data(self):
         while self.is_collecting:
             try:
