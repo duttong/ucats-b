@@ -18,7 +18,17 @@ class DisplayPanel(QWidget):
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
         with open(file_path, 'r') as file:
-            return yaml.safe_load(file)
+            config = yaml.safe_load(file)
+            config = self.lowercase_keys(config)
+            return config
+    
+    def lowercase_keys(self, data):
+        if isinstance(data, dict):
+            return {k.lower(): self.lowercase_keys(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self.lowercase_keys(i) for i in data]
+        else:
+            return data
 
     def initUI(self):
         layout = QVBoxLayout()
@@ -37,12 +47,13 @@ class DisplayPanel(QWidget):
 
         row = [0, 0, 0]
         for device_name, device_info in self.config['devices'].items():
+            device_name = device_name.lower()
             # Skip the device if 'display_vars' is empty or missing
             if not device_info.get('display_vars'):
                 continue
 
             colinc = 0
-            if device_name.lower() == "h2o_sensor" or device_name.lower() == "o3_sensor":
+            if device_name == "h2o_sensor" or device_name == "o3_sensor":
                 colinc = 2
 
             # Device label with larger font and bold style
@@ -142,7 +153,7 @@ class DisplayPanel(QWidget):
     # Entry function for Aeris CO2 Reboot button
     def aeris_co2_command(self, command):
         try:
-            aeris_device = self.devices.get('Aeris_CO2')
+            aeris_device = self.devices.get('aeris_co2')
         except AttributeError:
             print("This is a display demo, there are no active devices.")
             return
@@ -155,7 +166,7 @@ class DisplayPanel(QWidget):
     # Entry function for Aeris CO Reboot button
     def aeris_co_command(self, command):
         try:
-            aeris_device = self.devices.get('Aeris_CO')
+            aeris_device = self.devices.get('aeris_co')
         except AttributeError:
             print("This is a display demo, there are no active devices.")
             return
@@ -166,7 +177,7 @@ class DisplayPanel(QWidget):
             print("Aeris CO device not found!")
 
     def pumps_onoff(self):
-        jack = self.devices.get('Labjack')
+        jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
         if self.pumps_tog.isChecked():
             self.pumps_tog.setText("Pumps On")

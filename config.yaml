@@ -14,6 +14,7 @@ devices:
     data_var_prefix: j_     # leave blank for no prefix
     display_vars:
       - pilot_power
+      - pilot_wd
       - temp1
 
     digouts:

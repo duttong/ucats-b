@@ -27,7 +27,7 @@ class TDL_package(QMainWindow):
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
         self.pilot_switch = False
-        self.pressure_var = ''
+        self.pressure_var = ''      # determined from o3_sensor
         self.pressure = 1200.0
         self.alt_high_event = threading.Event()     # above high alt threshold
         self.alt_low_event = threading.Event()      # below low alt threshold
@@ -50,7 +50,8 @@ class TDL_package(QMainWindow):
         # Create instances for sensors on different ports (as in the original code)
         # Initialize devices dynamically from config
         for device_name, device_config in self.config['devices'].items():
-            if 'aeris' in device_name.lower():
+            device_name = device_name.lower()
+            if 'aeris' in device_name:
                 device = Aeris(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
@@ -58,7 +59,7 @@ class TDL_package(QMainWindow):
                     inst_num=device_config['inst_num'],
                     verbose=self.verbose
                 )
-            elif device_name.lower() == 'o3_sensor':
+            elif device_name == 'o3_sensor':
                 device = O3_2Btech(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
@@ -66,14 +67,14 @@ class TDL_package(QMainWindow):
                     verbose=self.verbose
                 )
                 self.pressure_var = f'{device_config["data_var_prefix"]}p'
-            elif device_name.lower() == 'h2o_sensor':
+            elif device_name == 'h2o_sensor':
                 device = Maycomm(
                     port=device_config['serial_port'],
                     prefix=device_config['data_var_prefix'],
                     sim_mode=device_config['sim_mode'],
                     verbose=self.verbose
                 )
-            elif device_name.lower() == 'labjack':
+            elif device_name == 'labjack':
                 device = LabJackController(
                     config_file=self.config_file,
                     prefix=device_config['data_var_prefix'],
@@ -87,7 +88,7 @@ class TDL_package(QMainWindow):
             self.devices[device_name] = device
             self.streams[device_name] = pd.DataFrame()
 
-            # Store prefixed variables in self.vars instead of modifying the device instance
+            # Store prefixed variables in self.all_variables instead of modifying the device instance
             self.vars[device_name] = [
                 f"{device_config['data_var_prefix']}{v}" for v in device.variables if "unused" not in v.lower()
             ]
@@ -152,17 +153,18 @@ class TDL_package(QMainWindow):
 
     def collect_data(self):
         # Fetch data and append to respective streams
+        # update variables like self.pressure that are from sensors.
         for device_name, device in self.devices.items():
             try:
                 data = device.get_all_data()
-                #print(data)
+                #print(device_name, data)
                 self.streams[device_name] = pd.concat(
                     [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
                 )
 
                 # Update the display panel with the latest data
                 self.display_panel.update_display_data(device_name, data[-1])
-                if device_name == 'aeris_CO2':
+                if device_name == 'aeris_co2':
                     self.display_panel.update_time(data[-1])
 
                 # Handle pressure updates for the O3 sensor
@@ -174,7 +176,7 @@ class TDL_package(QMainWindow):
                 
                 elif device_name == "labjack":
                     # pilot switch variable name with prefix from config file
-                    switch = f"{self.config['devices']['labjack']['data_var_prefix']}pilot_power"
+                    switch = f"{self.config['devices']['Labjack']['data_var_prefix']}pilot_power"
                     self.pilot_switch = data[0].get(switch, float("nan"))
 
             except IndexError:
@@ -189,6 +191,7 @@ class TDL_package(QMainWindow):
                 try:
                     full_data = pd.merge(full_data, stream, on='datetime', how='outer')
                 except KeyError:
+                    # no read or missing data
                     pass
 
         if full_data is not None:
@@ -220,7 +223,7 @@ class TDL_package(QMainWindow):
     def pilot_light(self, cycle=1):
         # pilot fail light circuit
         # TODO: add more logic to handle the state of the sensors
-        jack = self.devices["Labjack"]
+        jack = self.devices["labjack"]
         pilot_wd_add = jack.get_labjack_address('pilot_wd')
 
         while True:
@@ -280,7 +283,7 @@ class TDL_package(QMainWindow):
 
     def below_altitude(self):
         print("Plane is descending or taxiing.")
-        jack = self.devices["Labjack"]
+        jack = self.devices["labjack"]
         sol_cal_add = jack.get_labjack_address('sol_cal')
         self.alt_high_event.clear()
         self.alt_low_event.set()
