@@ -25,7 +25,7 @@ class LabJackController:
         if config_file is not None:
             self.config = self._load_config(config_file)
             self.variables = self.extract_labjack_variables()
-            self.digout_states = self.config.get('digouts', {})
+            self.digout_states = {f'{self.prefix}{key}': float('nan') for key in self.config.get('digouts', {}).values()}
 
     @staticmethod
     def _load_config(file_path):
@@ -168,7 +168,7 @@ class LabJackController:
                     ljm.eWriteName(self.handle, address, value)
 
                 # record state in digout variable name
-                for add, var in (self.config.get("outs") or {}).items():
+                for add, var in (self.config.get("digouts") or {}).items():
                     if add == address:
                         if self.prefix:
                             var = f'{self.prefix}{var}'
@@ -182,7 +182,7 @@ class LabJackController:
                     analog_readings = self.read_analog()
                     digital_readings = self.read_digital()
                     # add DAC
-                    data = current_datetime | analog_readings | digital_readings
+                    data = current_datetime | analog_readings | digital_readings | self.digout_states
                     self.data_buffer.append(data)
                     if self.verbose:
                         print(data)

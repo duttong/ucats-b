@@ -29,16 +29,11 @@ class TDL_package(QMainWindow):
         self.pilot_switch = False
         self.pressure_var = ''      # determined from o3_sensor
         self.pressure = 1200.0
-        self.lj_digouts = {}        # keep a dict of digouts
-        self.lj_prefix = self.config['devices']['labjack']['data_var_prefix']
-        self.o3_prefix = self.config['devices']['o3_sensor']['data_var_prefix']
         self.alt_high_event = threading.Event()     # above high alt threshold
         self.alt_low_event = threading.Event()      # below low alt threshold
         self.alt_high = 0       # mbar (these values are loaded from config.yaml)
         self.alt_low = 5000     # mbar
         self.start_time = datetime.now()
-        #self.extra_vars = {'sol_cal': self.sol_cal}       # extra variables for the .csv file.\
-        self.extra_vars = {}
 
         self.setWindowTitle("UCATS-B")
         self.setGeometry(100, 100, 250, 350)
@@ -126,6 +121,7 @@ class TDL_package(QMainWindow):
         self.timer.timeout.connect(self.collect_data)
 
         # start pilot light and pressure triggers
+        self.lj_digout('pumps', 0)
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
         threading.Thread(target=self.altitude_monitor, daemon=True).start()
@@ -170,10 +166,6 @@ class TDL_package(QMainWindow):
         for device_name, device in self.devices.items():
             try:
                 data = device.get_all_data()
-                if device_name == 'labjack':
-                    # get_all_data from labjack will only return digins and analog
-                    # the digouts are maintained as a dict in instrument.py
-                    data = [data[0] | self.lj_digouts]
                 self.streams[device_name] = pd.concat(
                     [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
                 )
@@ -192,7 +184,8 @@ class TDL_package(QMainWindow):
                 
                 elif device_name == "labjack":
                     # pilot switch variable name with prefix from config file
-                    switch = f"{self.lj_prefix}pilot_power"
+                    lj_prefix = self.config['devices']['labjack']['data_var_prefix']
+                    switch = f"{lj_prefix}pilot_power"
                     self.pilot_switch = data[0].get(switch, float("nan"))
 
             except IndexError:
@@ -237,11 +230,10 @@ class TDL_package(QMainWindow):
         print("Data collection stopped.")
 
     def lj_digout(self, variable, state):
-        """ Send a state (0 or 1) to the labjack. Save the new state in self.lj_digouts """
+        """ Send a state (0 or 1) to the labjack """
         jack = self.devices['labjack']
         address = jack.get_labjack_address(variable)
         jack.write_digital({address: state})
-        self.lj_digouts[f'{self.lj_prefix}{variable}'] = state
 
     def pilot_fail_light(self, cycle=1):
         """ pilot fail light circuit 
