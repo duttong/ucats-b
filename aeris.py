@@ -241,9 +241,9 @@ class Aeris:
                 simulated_data.append(f"{round(random.uniform(0, 10), 2):.2f}")
             elif var == "Ramp_Ampl":
                 simulated_data.append(f"{round(random.uniform(0.0, 1.0), 2):.2f}")
-            elif var == "N2O_ppm":
+            elif var == "N2O_ppb":
                 simulated_data.append(f"{round(random.uniform(.300, .400), 2):.2f}")
-            elif var in ["CO2_ppm", "CO_ppm"]:
+            elif var in ["CO2_ppm", "CO_ppb"]:
                 simulated_data.append(f"{round(random.uniform(0, 10), 2):.2f}")
             elif var == "H2O_ppm":
                 simulated_data.append(f"{round(random.uniform(.1000, .2000), 2):.2f}")

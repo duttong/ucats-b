@@ -31,6 +31,7 @@ class TDL_package(QMainWindow):
         self.pressure = 1200.0
         self.lj_digouts = {}        # keep a dict of digouts
         self.lj_prefix = self.config['devices']['labjack']['data_var_prefix']
+        self.o3_prefix = self.config['devices']['o3_sensor']['data_var_prefix']
         self.alt_high_event = threading.Event()     # above high alt threshold
         self.alt_low_event = threading.Event()      # below low alt threshold
         self.alt_high = 0       # mbar (these values are loaded from config.yaml)
@@ -125,7 +126,7 @@ class TDL_package(QMainWindow):
         self.timer.timeout.connect(self.collect_data)
 
         # start pilot light and pressure triggers
-        threading.Thread(target=self.pilot_light, daemon=True).start()
+        threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
         threading.Thread(target=self.altitude_monitor, daemon=True).start()
 
@@ -242,15 +243,71 @@ class TDL_package(QMainWindow):
         jack.write_digital({address: state})
         self.lj_digouts[f'{self.lj_prefix}{variable}'] = state
 
-    def pilot_light(self, cycle=1):
-        """ pilot fail light circuit
-            TODO: add more logic to handle the state of the sensors """
+    def pilot_fail_light(self, cycle=1):
+        """ pilot fail light circuit 
+        
+            The fail light has three stages of logic.
+            0) Start with the fail light ON.
+            1) Wait 5 second, check to see if the O3 sensor is up.
+               If the sensor is on. Turn the fail light OFF
+            2) Keep fail light off for aeris_wait seconds waiting for the Aeris instruements.
+            3) Check Aeris instruments for data. No data for max_missing_data, turn fail light ON.
+        """
+        aeris_wait = 20         # time (s) to wait for Aeris instruments
+        max_missing_data = 5    # Maximum allowed consecutive Aeris empty readings
+        
+        # fail light is on
+        self.lj_digout('pilot_wd', 0)
+        time.sleep(5)
 
+        # wait until the O3 sensor reports data.
+        # The fail light will be on at this point
         while True:
+            o3 = self.streams['o3_sensor']
+            if o3.empty == False:
+                print('Fail Light: O3 sensor up')
+                break
+            time.sleep(2)
+
+        # turn the fail light off while the Aeris sensors come up.
+        print('Fail Light: Waiting for Aeris instruments')
+        start_time = time.time()  # Record the start time
+        while time.time() - start_time < aeris_wait:
             self.lj_digout('pilot_wd', 0)
             time.sleep(cycle)
             self.lj_digout('pilot_wd', 1)
             time.sleep(cycle)
+
+        # Monitor Aeris sensors for data. If no data is received consecutively, trigger the fail condition.
+        a1_empty_count = 0
+        a2_empty_count = 0
+        
+        print('Fail Light: Monitoring Aeris now')
+        while True:
+            # Watchdog signal
+            self.lj_digout('pilot_wd', 0)
+            time.sleep(cycle)
+            self.lj_digout('pilot_wd', 1)
+            time.sleep(cycle)
+
+            # Read data from sensors
+            a1 = self.streams['aeris_co2']
+            a2 = self.streams['aeris_co']
+
+            # Update empty count for CO2 sensor
+            a1_empty_count = a1_empty_count + 1 if a1.empty else 0
+
+            # Update empty count for CO sensor
+            a2_empty_count = a2_empty_count + 1 if a2.empty else 0
+
+            # Break loop if consecutive empty readings exceed threshold
+            if a1_empty_count > max_missing_data or a2_empty_count > max_missing_data:
+                print(f'Fail Light: Aeris offline #1 {a1_empty_count}, #2 {a2_empty_count}')
+                break
+    
+        # This is a failed condition. Don't toggle the pilot_wd line.
+        print('Fail Light: ON')
+        self.lj_digout('pilot_wd', 0)
 
     def pilot_off_switch(self):
         """ If the pilot turns the switch to ucats-b off. Quickly shutdown.
