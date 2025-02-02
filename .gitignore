@@ -2,3 +2,4 @@
 .venv
 __py*
 shutdown.txt
+*.log
