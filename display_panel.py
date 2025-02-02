@@ -139,15 +139,17 @@ class DisplayPanel(QWidget):
         msg.exec_()
 
         if msg.clickedButton() == reboot_button:
+            cmd = "reboot"
             if sensor_type == "Aeris CO2":
-                self.aeris_co2_command("reboot")
+                self.aeris_command("aeris_co2", cmd)
             else:
-                self.aeris_co_command("reboot")
+                self.aeris_command("aeris_co", cmd)
         elif msg.clickedButton() == shutdown_button:
+            cmd = "shutdown"
             if sensor_type == "Aeris CO2":
-                self.aeris_co2_command("shutdown")
+                self.aeris_command("aeris_co2", cmd)
             else:
-                self.aeris_co_command("shutdown")
+                self.aeris_command("aeris_co", cmd)
 
     def show_co2_options(self):
         self.show_menu("Aeris CO2")
@@ -156,30 +158,17 @@ class DisplayPanel(QWidget):
         self.show_menu("Aeris CO")
 
     # Entry function for Aeris CO2 Reboot button
-    def aeris_co2_command(self, command):
+    def aeris_command(self, device_name, command):
         try:
-            aeris_device = self.devices.get('aeris_co2')
+            aeris_device = self.devices.get(device_name)
         except AttributeError:
             print("This is a display demo, there are no active devices.")
             return
         if aeris_device:
             aeris_device.send_command(command)
-            print(f"Aeris CO2 {command} command sent!")
+            print(f"Aeris {device_name} {command} command sent!")
         else:
-            print("Aeris CO2 device not found!")
-
-    # Entry function for Aeris CO Reboot button
-    def aeris_co_command(self, command):
-        try:
-            aeris_device = self.devices.get('aeris_co')
-        except AttributeError:
-            print("This is a display demo, there are no active devices.")
-            return
-        if aeris_device:
-            aeris_device.send_command(command)
-            print(f"Aeris CO {command} command sent!")
-        else:
-            print("Aeris CO device not found!")
+            print(f"Aeris {device_name} device not found!")
 
     def pumps_onoff(self):
         jack = self.devices.get('labjack')
