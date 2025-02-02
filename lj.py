@@ -146,7 +146,7 @@ class LabJackController:
             if self.prefix:
                 var = f'{self.prefix}{var}'
             value = ljm.eReadName(self.handle, address)
-            digital_readings[var] = bool(value)
+            digital_readings[var] = value
         return digital_readings
     
     def write_digital(self, digital_writes):

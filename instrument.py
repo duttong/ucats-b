@@ -313,7 +313,7 @@ class TDL_package(QMainWindow):
         if elapsed_time < 10:
             return
         
-        if self.pilot_switch == 0:
+        if self.pilot_switch < 0.1:
             # TODO: Should this value be 0 for more than 1 second?
             self.display_panel.shutdown()
 
