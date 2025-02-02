@@ -3,7 +3,7 @@ import time
 import yaml
 import datetime
 import subprocess
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import Qt
 
@@ -43,7 +43,7 @@ class DisplayPanel(QWidget):
         self.data_labels = {}  # Store labels to update later
 
         grid = QGridLayout()
-        grid.setSpacing(10)  # Adjust spacing between rows
+        grid.setSpacing(5)  # Adjust spacing between rows
 
         row = [0, 0, 0]
         for device_name, device_info in self.config['devices'].items():
@@ -53,7 +53,7 @@ class DisplayPanel(QWidget):
                 continue
 
             colinc = 0
-            if device_name == "h2o_sensor" or device_name == "o3_sensor":
+            if device_name == "h2o_sensor" or device_name == "o3_sensor" or device_name == "labjack":
                 colinc = 2
 
             # Device label with larger font and bold style
@@ -88,26 +88,44 @@ class DisplayPanel(QWidget):
         self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
         layout.addWidget(self.pumps_tog)
 
-        self.co2_reboot_button = QPushButton("Aeris CO2 Reboot/Shutdown")
+        sol_layout = QHBoxLayout()
+        self.sol1 = QPushButton("Sol: Cal0/Cal1")
+        self.sol1.setCheckable(True)  # Makes the button toggle
+        self.sol1.clicked.connect(self.sol_cals)
+        self.sol1.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+
+        self.sol2 = QPushButton("Sol: Air/Cal")
+        self.sol2.setCheckable(True)  # Makes the button toggle
+        self.sol2.clicked.connect(self.sol_aircal)
+        self.sol2.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+
+        sol_layout.addWidget(self.sol1)
+        sol_layout.addWidget(self.sol2)
+        layout.addLayout(sol_layout)
+
+        aeris_layout = QHBoxLayout()
+        self.co2_reboot_button = QPushButton("Aeris CO2 cmd")
         self.co2_reboot_button.clicked.connect(self.show_co2_options)
         self.co2_reboot_button.setStyleSheet(
             "background-color: #FFCCCC; color: black; border: 1px solid #CC9999;"
         )
-        layout.addWidget(self.co2_reboot_button)
-
-        self.co_reboot_button = QPushButton("Aeris CO Reboot/Shutdown")
+        
+        self.co_reboot_button = QPushButton("Aeris CO cmd")
         self.co_reboot_button.clicked.connect(self.show_co_options)
         self.co_reboot_button.setStyleSheet(
             "background-color: #FFCCCC; color: black; border: 1px solid #CC9999;"
         )
-        layout.addWidget(self.co_reboot_button)
-        self.setLayout(layout)
-
+        aeris_layout.addWidget(self.co2_reboot_button)
+        aeris_layout.addWidget(self.co_reboot_button)
+        layout.addLayout(aeris_layout)
+        
         # received a off signal from pilot
         self.shutdown_trigger = QPushButton("SHUTDOWN")
         self.shutdown_trigger.clicked.connect(self.shutdown_menu)
         self.shutdown_trigger.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
         layout.addWidget(self.shutdown_trigger)
+
+        self.setLayout(layout)
 
     def update_time(self, data):
         packet_time = data['datetime'].strftime("%Y-%m-%d %H:%M:%S")
@@ -181,6 +199,30 @@ class DisplayPanel(QWidget):
             self.pumps_tog.setText("Pumps Off")
             self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
             jack.write_digital({dig: 0})
+    
+    def sol_cals(self):
+        jack = self.devices.get('labjack')
+        dig = jack.get_labjack_address('sol_cals')
+        if self.sol1.isChecked():
+            self.sol1.setText("Cal 1")
+            self.sol1.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
+            jack.write_digital({dig: 1})
+        else:
+            self.sol1.setText("Cal 0")
+            self.sol1.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
+            jack.write_digital({dig: 0})
+
+    def sol_aircal(self):
+        jack = self.devices.get('labjack')
+        dig = jack.get_labjack_address('sol_aircal')
+        if self.sol2.isChecked():
+            self.sol2.setText("Air")
+            self.sol2.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
+            jack.write_digital({dig: 0})
+        else:
+            self.sol2.setText("Cal")
+            self.sol2.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
+            jack.write_digital({dig: 1})
 
     def shutdown_menu(self, sensor_type):
         msg = QMessageBox()

@@ -364,7 +364,8 @@ class TDL_package(QMainWindow):
         self.alt_high_event.clear()
         self.alt_low_event.set()
         # Perform actions during descent or post-landing
-        self.lj_digout('sol_cal', 0)
+        self.lj_digout('pumps', 0)
+        self.lj_digout('sol_cals', 0)
         self.lj_digout('sol_aircal', 0) 
 
 def main():

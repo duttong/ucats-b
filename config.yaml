@@ -16,16 +16,15 @@ devices:
       - pilot_power
       - pilot_wd
       - pumps
-      - temp1
+      - sol_cals
+      - sol_aircal
 
     digouts:
       # variables used in instrument.py
       FIO6: 'pilot_wd'
-      FIO4: 'sol_cal'
+      FIO4: 'sol_cals'
       FIO5: 'sol_aircal'
       FIO7: 'pumps'
-      EIO4: 'power_aerisCO2'
-      EIO6: 'power_aerisCO'
 
     digins:
       # these addresses are read every second
