@@ -77,7 +77,7 @@ devices:
 
   H2O_sensor:
     serial_port: /dev/ttyUSB1
-    sim_mode: true
+    sim_mode: false
     data_var_prefix: w_
     display_vars:
       - H2O_sh
