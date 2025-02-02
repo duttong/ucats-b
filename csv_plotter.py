@@ -440,6 +440,36 @@ class CSVPlotter(QMainWindow):
         self.figure.tight_layout()
         self.canvas.draw()
         
+    @classmethod
+    def load_config(cls, config_path):
+        with open(config_path, 'r') as file:
+            return yaml.safe_load(file)
+
+    @classmethod
+    def from_config(cls, config_path):
+        config = cls.load_config(config_path)
+        
+        app = QApplication(sys.argv)
+        windows = []
+
+        for index, (win_key, win_config) in enumerate(config.get('windows', {}).items()):
+            name = win_config.get('name')
+            left_y_vars = win_config.get('left_y', [])
+            right_y_vars = win_config.get('right_y', [])
+
+            window = cls(
+                win_name=name,
+                left_y_vars=left_y_vars,
+                right_y_vars=right_y_vars,
+                offset=index * 20  # Slight offset for window positioning
+            )
+            window.show()
+            windows.append(window)  # Keep references to prevent garbage collection
+        
+        sys.exit(app.exec_())
+        return windows
+            
+
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(description="CSV Plotter Application")
