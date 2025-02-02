@@ -200,8 +200,8 @@ class DisplayPanel(QWidget):
             file.write(f"{current_time} - Shutdown initiated\n")
 
         # tell aeris instruments to shutdown
-        self.aeris_co2_command('shutdown')
-        self.aeris_co_command('shutdown')
+        self.aeris_command('aeris_co2', 'shutdown')
+        self.aeris_command('aeris_co', 'shutdown')
         time.sleep(0.2)
         # shutdown Raspberry Pi
         subprocess.run(["sudo", "shutdown", "-h", "now"])
