@@ -209,18 +209,10 @@ class DisplayPanel(QWidget):
         jack.write_digital({dig: 0})
 
     def sol_cals(self):
-        if self.sol1.isChecked():
-            self.cal1()
-        else:
-            self.cal0()
+        self.cal1() if self.sol1.isChecked() else self.cal0()
 
     def sol_aircal(self):
-        jack = self.devices.get('labjack')
-        dig = jack.get_labjack_address('sol_aircal')
-        if self.sol2.isChecked():
-            self.air()
-        else:
-            self.cals()
+        self.air() if self.sol2.isChecked() else self.cals()
 
     def cal0(self):
         jack = self.devices.get('labjack')
@@ -235,6 +227,7 @@ class DisplayPanel(QWidget):
         self.sol1.setText("Cal 1")
         self.sol1.setStyleSheet("background-color: DodgerBlue; color: White; border: 1px solid #CC9999;")  
         jack.write_digital({dig: 1})
+        self.sol1.setChecked(True)
 
     def cals(self):
         jack = self.devices.get('labjack')
@@ -249,6 +242,7 @@ class DisplayPanel(QWidget):
         self.sol2.setText("Air")
         self.sol2.setStyleSheet("background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999;")  
         jack.write_digital({dig: 0})
+        self.sol2.setChecked(True)
 
     def shutdown_menu(self, sensor_type):
         msg = QMessageBox()
