@@ -26,9 +26,10 @@ class TDL_package(QMainWindow):
         self.config_file = config_file
         self.config = self.load_config(config_file)
         self.file_path = self.create_filename()
-        self.pilot_switch = False
+        self.pilot_switch = 1
         self.pressure_var = ''      # determined from o3_sensor
         self.pressure = 1200.0
+        self.pilot_off_event = threading.Event()
         self.alt_high_event = threading.Event()     # above high alt threshold
         self.alt_low_event = threading.Event()      # below low alt threshold
         self.alt_high = float(self.config['triggers'].get('alt_high', 700))     # default 700 if missing
@@ -107,8 +108,6 @@ class TDL_package(QMainWindow):
         else:
             self.last_saved_datetime = None
 
-        time.sleep(2)
-        
         # Timer for periodic data collection
         self.timer = QTimer()
         self.timer.timeout.connect(self.collect_data)
@@ -117,7 +116,7 @@ class TDL_package(QMainWindow):
         self.initial_states()
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
-        threading.Thread(target=self.altitude_monitor, daemon=True).start()
+        #threading.Thread(target=self.altitude_monitor, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -147,7 +146,7 @@ class TDL_package(QMainWindow):
             device.start_data_collection()
 
         # Start the timer to collect data every 1 second
-        self.timer.start(1000)
+        self.timer.start(950)
 
         if run_duration is not None:
             # Stop collection after run_duration seconds
@@ -156,6 +155,7 @@ class TDL_package(QMainWindow):
     def collect_data(self):
         # Fetch data and append to respective streams
         # update variables like self.pressure that are from sensors.
+        dur = time.time()
         for device_name, device in self.devices.items():
             try:
                 data = device.get_all_data()
@@ -179,7 +179,7 @@ class TDL_package(QMainWindow):
                     # pilot switch variable name with prefix from config file
                     lj_prefix = self.config['devices']['labjack']['data_var_prefix']
                     switch = f"{lj_prefix}pilot_power"
-                    self.pilot_switch = data[0].get(switch, float("nan"))
+                    self.pilot_switch = data[0].get(switch, 1)
 
             except IndexError:
                 pass
@@ -214,6 +214,8 @@ class TDL_package(QMainWindow):
         for stream_name in self.streams.keys():
             self.streams[stream_name] = self.streams[stream_name].tail(self.stream_size)
 
+        #print(f'collected: {time.time()-dur} {time.time()}')
+
     def stop_collection(self):
         # Stop data collection and disconnect devices
         self.timer.stop()
@@ -229,12 +231,10 @@ class TDL_package(QMainWindow):
         jack.write_digital({address: state})
 
     def initial_states(self):
+        self.pilot_off_event.clear()
         self.display_panel.cal0()
-        time.sleep(0.05)
         self.display_panel.pumps_off()
-        time.sleep(0.05)
         self.display_panel.air()
-        time.sleep(0.05)
         self.display_panel.sequence_idle()
 
     def pilot_fail_light(self, cycle=1):
@@ -308,16 +308,30 @@ class TDL_package(QMainWindow):
         self.lj_digout('pilot_wd', 0)
 
     def pilot_off_switch(self):
-        """ If the pilot turns the switch to ucats-b off. Quickly shutdown.
-            Start checking after the program has been running for 10 seconds or more.
         """
-        elapsed_time = (datetime.now() - self.start_time).total_seconds()
-        if elapsed_time < 10:
-            return
+        If the pilot turns the switch to UCATS-B off, quickly shutdown.
+        Start checking after the program has been running for 10 seconds or more.
+        """
+        # Wait for up to 10 seconds for the event to be set, non-blocking if already set
+        self.pilot_off_event.wait(10)
         
-        if self.pilot_switch < 0.1:
-            # TODO: Should this value be 0 for more than 1 second?
-            self.display_panel.shutdown()
+        print(f'Initial pilot switch check: {self.pilot_switch}')
+        
+        # Continuous monitoring loop
+        while not self.pilot_off_event.is_set():
+            if self.pilot_switch < 0.1:
+                # Ensure the value stays below 0.1 for at least 1 second before shutdown
+                start_time = time.time()
+                while self.pilot_switch < 0.1:
+                    if time.time() - start_time >= 1:
+                        self.display_panel.shutdown()
+                        return  # Exit after shutdown
+                    time.sleep(0.1)  # Check more frequently for responsiveness
+            else:
+                start_time = None  # Reset timer if the switch is back above threshold
+            
+            # Check every 100ms for quick responsiveness
+            time.sleep(0.1)
 
     # pressure checks
     def altitude_monitor(self):

@@ -263,7 +263,7 @@ class DisplayPanel(QWidget):
         cal_s = float(self.config['triggers'].get('cal_duration', 20))   # default 20
 
         def countdown(duration, label):
-            update_interval = 0.1  # Faster loop interval (0.1 seconds)
+            update_interval = 0.2  # Faster loop interval (0.2 seconds)
             remaining_time = duration
             last_displayed_time = int(remaining_time)  # To avoid frequent unnecessary updates
 
@@ -285,13 +285,8 @@ class DisplayPanel(QWidget):
                 remaining_time -= update_interval
 
             return False  # Countdown finished normally
+        
         while not self.sequence_event.is_set():
-            # Air
-            self.air()
-            self.cal0()
-            if countdown(air_s, "Air"):
-                break
-
             # Cal 0
             self.cals()
             self.cal0()
@@ -309,6 +304,13 @@ class DisplayPanel(QWidget):
             self.cal1()
             if countdown(cal_s, "Cal 1"):
                 break
+
+            # Air
+            self.air()
+            self.cal0()
+            if countdown(air_s, "Air"):
+                break
+
 
     # Add Stop Function to Reset UI and Stop the Sequence
     def sequence_idle(self):
