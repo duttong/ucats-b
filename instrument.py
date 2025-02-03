@@ -31,8 +31,8 @@ class TDL_package(QMainWindow):
         self.pressure = 1200.0
         self.alt_high_event = threading.Event()     # above high alt threshold
         self.alt_low_event = threading.Event()      # below low alt threshold
-        self.alt_high = 0       # mbar (these values are loaded from config.yaml)
-        self.alt_low = 5000     # mbar
+        self.alt_high = float(self.config['triggers'].get('alt_high', 700))     # default 700 if missing
+        self.alt_low = float(self.config['triggers'].get('alt_low', 800))       # default 800 if missing
         self.start_time = datetime.now()
 
         self.setWindowTitle("UCATS-B")
@@ -99,13 +99,6 @@ class TDL_package(QMainWindow):
         self.display_panel = DisplayPanel(config_file, self.devices)
         self.setCentralWidget(self.display_panel)
 
-        # load pressure trigger points
-        for event, value in self.config['triggers'].items():
-            if event == 'alt_high':
-                self.alt_high = value
-            elif event == 'alt_low':
-                self.alt_low = value
-        
         # Load existing data if the CSV file already exists
         if os.path.exists(self.file_path):
             previous_data = pd.read_csv(self.file_path, parse_dates=['datetime'])
@@ -379,26 +372,28 @@ class TDL_package(QMainWindow):
 
     def run_sequence(self):
         time.sleep(5)
+        air_s = float(self.config['triggers'].get('air_duration', 300))  # default 300
+        cal_s = float(self.config['triggers'].get('cal_duration', 20))   # default 20
         while True:
             # air
             self.display_panel.air()
             self.display_panel.cal0()
-            time.sleep(60)
+            time.sleep(air_s)
 
             # cal0
             self.display_panel.cals()
             self.display_panel.cal0()
-            time.sleep(20)
+            time.sleep(cal_s)
 
             # air
             self.display_panel.air()
             self.display_panel.cal0()
-            time.sleep(60)
+            time.sleep(air_s)
 
             # cal1
             self.display_panel.cals()
             self.display_panel.cal1()
-            time.sleep(20)
+            time.sleep(cal_s)
 
 
 def main():
