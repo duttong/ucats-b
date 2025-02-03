@@ -46,7 +46,7 @@ class Aeris:
         else:
             self.variables = [
                 "Unused_0", "P_mbars", "T_gas", "Unused_1", "T_ambient", "Unused_2", "Unused_3", 
-                "Laser_PID_Readout", "Det_PID_Readout", "Unused_4", "Unused_5", "Unused_6",
+                "Laser_PID_Readout", "Det_PID", "Unused_4", "Unused_5", "Unused_6",
                 "Unused_7", "Unused_8", "Unused_9", "Unused_10", "Unused_11", "Unused_12", 
                 "Unused_13", "Unused_14", "Unused_15", "Unused_16", "Unused_17", "Unused_18", 
                 "Unused_19", "Unused_20", "Unused_21", "Unused_22", "Unused_23", "Unused_24", 
