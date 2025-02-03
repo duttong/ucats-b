@@ -96,7 +96,7 @@ class TDL_package(QMainWindow):
         self.all_variables = ['datetime'] + sorted(self.all_variables)
 
         # Initialize the display panel
-        self.display_panel = DisplayPanel(config_file, self.devices)
+        self.display_panel = DisplayPanel(self.config_file, self.devices)
         self.setCentralWidget(self.display_panel)
 
         # Load existing data if the CSV file already exists
@@ -118,7 +118,6 @@ class TDL_package(QMainWindow):
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
         threading.Thread(target=self.altitude_monitor, daemon=True).start()
-        #threading.Thread(target=self.run_sequence, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -231,8 +230,12 @@ class TDL_package(QMainWindow):
 
     def initial_states(self):
         self.display_panel.cal0()
-        self.display_panel.air()
+        time.sleep(0.05)
         self.display_panel.pumps_off()
+        time.sleep(0.05)
+        self.display_panel.air()
+        time.sleep(0.05)
+        self.display_panel.sequence_idle()
 
     def pilot_fail_light(self, cycle=1):
         """ pilot fail light circuit 
@@ -333,33 +336,7 @@ class TDL_package(QMainWindow):
     def at_altitude(self):
         print("Plane has reached altitude.")
         self.alt_low_event.clear()
-
-        while True:  # Stay in the loop until the plane descends
-            # Solenoid cycling logic
-            pass
-            """
-            # cal1
-            self.lj_digout('sol_cals', 0)
-            self.lj_digout('sol_aircal', 1) 
-            print('cal1')
-            if self.alt_high_event.wait(20):
-                break
-
-            self.lj_digout('sol_cals', 1)
-            self.lj_digout('sol_aircal', 1) 
-            print('cal2')
-            if self.alt_high_event.wait(20):
-                break
-
-            self.lj_digout('sol_cals', 0)
-            self.lj_digout('sol_aircal', 0) 
-            print('air')
-            if self.alt_high_event.wait(300):
-                break
-            """
-
-        print("Exiting cruising altitude actions.")
-        self.alt_high_event.clear()  # Clear the high-altitude event
+        self.display_panel.sequence_run()
 
     def below_altitude(self):
         print("Plane is descending or taxiing.")
@@ -370,31 +347,11 @@ class TDL_package(QMainWindow):
         self.lj_digout('sol_cals', 0)
         self.lj_digout('sol_aircal', 0)
 
-    def run_sequence(self):
-        time.sleep(5)
-        air_s = float(self.config['triggers'].get('air_duration', 300))  # default 300
-        cal_s = float(self.config['triggers'].get('cal_duration', 20))   # default 20
-        while True:
-            # air
-            self.display_panel.air()
-            self.display_panel.cal0()
-            time.sleep(air_s)
-
-            # cal0
-            self.display_panel.cals()
-            self.display_panel.cal0()
-            time.sleep(cal_s)
-
-            # air
-            self.display_panel.air()
-            self.display_panel.cal0()
-            time.sleep(air_s)
-
-            # cal1
-            self.display_panel.cals()
-            self.display_panel.cal1()
-            time.sleep(cal_s)
-
+    def closeEvent(self, event):
+        print("Application is closing...")
+        if hasattr(self, 'display_panel') and self.display_panel.sequence_event:
+            self.display_panel.sequence_event.set()  # Stop any running sequence
+        event.accept()  # Allow the application to close
 
 def main():
     # Create the argument parser

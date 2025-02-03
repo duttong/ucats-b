@@ -3,6 +3,7 @@ import time
 import yaml
 import datetime
 import subprocess
+import threading
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
 from PyQt5.QtGui import QFont, QColor
 from PyQt5.QtCore import Qt
@@ -13,6 +14,7 @@ class DisplayPanel(QWidget):
         self.config_file = config_file
         self.config = self.load_config(config_file)
         self.devices = devices
+        self.sequence_event = threading.Event()
         self.initUI()
 
     def load_config(self, file_path='config.yaml'):
@@ -82,11 +84,10 @@ class DisplayPanel(QWidget):
                 row[colinc] += 1
 
         layout.addLayout(grid)
-        self.pumps_tog = QPushButton("Pumps Off")
-        self.pumps_tog.setCheckable(True)  # Makes the button toggle
-        self.pumps_tog.clicked.connect(self.pumps_onoff)
-        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
-        layout.addWidget(self.pumps_tog)
+        self.sequence_button = QPushButton("Idle")
+        self.sequence_button.setCheckable(True)
+        self.sequence_button.clicked.connect(self.sequence_run)
+        layout.addWidget(self.sequence_button)
 
         sol_layout = QHBoxLayout()
         self.sol1 = QPushButton("Sol: Cal0/Cal1")
@@ -102,6 +103,12 @@ class DisplayPanel(QWidget):
         sol_layout.addWidget(self.sol1)
         sol_layout.addWidget(self.sol2)
         layout.addLayout(sol_layout)
+
+        self.pumps_tog = QPushButton("Pumps Off")
+        self.pumps_tog.setCheckable(True)  # Makes the button toggle
+        self.pumps_tog.clicked.connect(self.pumps_onoff)
+        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+        layout.addWidget(self.pumps_tog)
 
         aeris_layout = QHBoxLayout()
         self.co2_reboot_button = QPushButton("Aeris CO2 cmd")
@@ -189,10 +196,7 @@ class DisplayPanel(QWidget):
             print(f"Aeris {device_name} device not found!")
 
     def pumps_onoff(self):
-        if self.pumps_tog.isChecked():
-            self.pumps_on()
-        else:
-            self.pumps_off()
+        self.pumps_on() if self.pumps_tog.isChecked() else self.pumps_off()
 
     def pumps_on(self):
         jack = self.devices.get('labjack')
@@ -214,11 +218,13 @@ class DisplayPanel(QWidget):
     def sol_aircal(self):
         self.air() if self.sol2.isChecked() else self.cals()
 
+    # The methods below can be called from instrument.py and will change the state of buttons.
     def cal0(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('sol_cals')
         self.sol1.setText("Cal 0")
         self.sol1.setStyleSheet("background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999;")  
+        self.sol1.setChecked(False)
         jack.write_digital({dig: 0})
 
     def cal1(self):
@@ -226,14 +232,15 @@ class DisplayPanel(QWidget):
         dig = jack.get_labjack_address('sol_cals')
         self.sol1.setText("Cal 1")
         self.sol1.setStyleSheet("background-color: DodgerBlue; color: White; border: 1px solid #CC9999;")  
-        jack.write_digital({dig: 1})
         self.sol1.setChecked(True)
+        jack.write_digital({dig: 1})
 
     def cals(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('sol_aircal')
         self.sol2.setText("Cal")
         self.sol2.setStyleSheet("background-color: DodgerBlue; color: White; border: 1px solid #CC9999;")  
+        self.sol2.setChecked(False)
         jack.write_digital({dig: 1})
 
     def air(self):
@@ -241,8 +248,75 @@ class DisplayPanel(QWidget):
         dig = jack.get_labjack_address('sol_aircal')
         self.sol2.setText("Air")
         self.sol2.setStyleSheet("background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999;")  
-        jack.write_digital({dig: 0})
         self.sol2.setChecked(True)
+        jack.write_digital({dig: 0})
+
+    def sequence_run(self):
+        self.sequence_idle() if self.sequence_button.isChecked() else self.sequence_start()
+
+    def sequence_start(self):
+        self.sequence_event.clear()  # Prepare to start the sequence
+        self.sequence_button.setChecked(False)
+        self.sequence_button.setStyleSheet("background-color: DarkSeaGreen; color: Black; border: 1px solid #CC9999;")  
+        
+        air_s = float(self.config['triggers'].get('air_duration', 300))  # default 300
+        cal_s = float(self.config['triggers'].get('cal_duration', 20))   # default 20
+
+        def countdown(duration, label):
+            update_interval = 0.1  # Faster loop interval (0.1 seconds)
+            remaining_time = duration
+            last_displayed_time = int(remaining_time)  # To avoid frequent unnecessary updates
+
+            while remaining_time > 0:
+                if self.sequence_event.is_set():  # Check if stop was requested
+                    return True
+
+                # Update UI only when the integer part of the remaining time changes
+                current_display_time = int(remaining_time)
+                if current_display_time != last_displayed_time:
+                    self.sequence_button.setText(f"Running Sequence: {label} ({current_display_time}s)")
+                    QApplication.processEvents()  # Update UI
+                    last_displayed_time = current_display_time
+
+                # Wait for 0.1 seconds, checking if stop was requested
+                if self.sequence_event.wait(update_interval):
+                    return True
+
+                remaining_time -= update_interval
+
+            return False  # Countdown finished normally
+        while not self.sequence_event.is_set():
+            # Air
+            self.air()
+            self.cal0()
+            if countdown(air_s, "Air"):
+                break
+
+            # Cal 0
+            self.cals()
+            self.cal0()
+            if countdown(cal_s, "Cal 0"):
+                break
+
+            # Air
+            self.air()
+            self.cal0()
+            if countdown(air_s, "Air"):
+                break
+
+            # Cal 1
+            self.cals()
+            self.cal1()
+            if countdown(cal_s, "Cal 1"):
+                break
+
+    # Add Stop Function to Reset UI and Stop the Sequence
+    def sequence_idle(self):
+        self.sequence_event.set()  # Signal to stop the sequence
+        self.sequence_button.setChecked(True)
+        self.sequence_button.setText("Sequence Idle")
+        self.sequence_button.setStyleSheet("background-color: LightGray; color: Black; border: 1px solid #999;")
+        QApplication.processEvents()  # Refresh UI
 
     def shutdown_menu(self, sensor_type):
         msg = QMessageBox()
