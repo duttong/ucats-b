@@ -121,10 +121,11 @@ class TDL_package(QMainWindow):
         self.timer.timeout.connect(self.collect_data)
 
         # start pilot light and pressure triggers
-        self.lj_digout('pumps', 0)
+        self.initial_states()
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
         threading.Thread(target=self.altitude_monitor, daemon=True).start()
+        #threading.Thread(target=self.run_sequence, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -235,6 +236,11 @@ class TDL_package(QMainWindow):
         address = jack.get_labjack_address(variable)
         jack.write_digital({address: state})
 
+    def initial_states(self):
+        self.display_panel.cal0()
+        self.display_panel.air()
+        self.display_panel.pumps_off()
+
     def pilot_fail_light(self, cycle=1):
         """ pilot fail light circuit 
         
@@ -245,7 +251,7 @@ class TDL_package(QMainWindow):
             2) Keep fail light off for aeris_wait seconds waiting for the Aeris instruements.
             3) Check Aeris instruments for data. No data for max_missing_data, turn fail light ON.
         """
-        aeris_wait = 20         # time (s) to wait for Aeris instruments
+        aeris_wait = 180        # time (s) to wait for Aeris instruments
         max_missing_data = 5    # Maximum allowed consecutive Aeris empty readings
         
         # fail light is on
@@ -337,24 +343,27 @@ class TDL_package(QMainWindow):
 
         while True:  # Stay in the loop until the plane descends
             # Solenoid cycling logic
+            pass
+            """
             # cal1
-            self.lj_digout('sol_cal', 0)
+            self.lj_digout('sol_cals', 0)
             self.lj_digout('sol_aircal', 1) 
             print('cal1')
             if self.alt_high_event.wait(20):
                 break
 
-            self.lj_digout('sol_cal', 1)
+            self.lj_digout('sol_cals', 1)
             self.lj_digout('sol_aircal', 1) 
             print('cal2')
             if self.alt_high_event.wait(20):
                 break
 
-            self.lj_digout('sol_cal', 0)
+            self.lj_digout('sol_cals', 0)
             self.lj_digout('sol_aircal', 0) 
             print('air')
             if self.alt_high_event.wait(300):
                 break
+            """
 
         print("Exiting cruising altitude actions.")
         self.alt_high_event.clear()  # Clear the high-altitude event
@@ -366,7 +375,31 @@ class TDL_package(QMainWindow):
         # Perform actions during descent or post-landing
         self.lj_digout('pumps', 0)
         self.lj_digout('sol_cals', 0)
-        self.lj_digout('sol_aircal', 0) 
+        self.lj_digout('sol_aircal', 0)
+
+    def run_sequence(self):
+        time.sleep(5)
+        while True:
+            # air
+            self.display_panel.air()
+            self.display_panel.cal0()
+            time.sleep(60)
+
+            # cal0
+            self.display_panel.cals()
+            self.display_panel.cal0()
+            time.sleep(20)
+
+            # air
+            self.display_panel.air()
+            self.display_panel.cal0()
+            time.sleep(60)
+
+            # cal1
+            self.display_panel.cals()
+            self.display_panel.cal1()
+            time.sleep(20)
+
 
 def main():
     # Create the argument parser

@@ -122,7 +122,7 @@ class DisplayPanel(QWidget):
         # received a off signal from pilot
         self.shutdown_trigger = QPushButton("SHUTDOWN")
         self.shutdown_trigger.clicked.connect(self.shutdown_menu)
-        self.shutdown_trigger.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+        self.shutdown_trigger.setStyleSheet("background-color: DarkRed; color: white; border: 1px solid #CC9999;")  # Light red when OFF
         layout.addWidget(self.shutdown_trigger)
 
         self.setLayout(layout)
@@ -189,40 +189,66 @@ class DisplayPanel(QWidget):
             print(f"Aeris {device_name} device not found!")
 
     def pumps_onoff(self):
+        if self.pumps_tog.isChecked():
+            self.pumps_on()
+        else:
+            self.pumps_off()
+
+    def pumps_on(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
-        if self.pumps_tog.isChecked():
-            self.pumps_tog.setText("Pumps On")
-            self.pumps_tog.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
-            jack.write_digital({dig: 1})
-        else:
-            self.pumps_tog.setText("Pumps Off")
-            self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
-            jack.write_digital({dig: 0})
+        self.pumps_tog.setText("Pumps On")
+        self.pumps_tog.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
+        jack.write_digital({dig: 1})
     
-    def sol_cals(self):
+    def pumps_off(self):
         jack = self.devices.get('labjack')
-        dig = jack.get_labjack_address('sol_cals')
+        dig = jack.get_labjack_address('pumps')
+        self.pumps_tog.setText("Pumps Off")
+        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
+        jack.write_digital({dig: 0})
+
+    def sol_cals(self):
         if self.sol1.isChecked():
-            self.sol1.setText("Cal 1")
-            self.sol1.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
-            jack.write_digital({dig: 1})
+            self.cal1()
         else:
-            self.sol1.setText("Cal 0")
-            self.sol1.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
-            jack.write_digital({dig: 0})
+            self.cal0()
 
     def sol_aircal(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('sol_aircal')
         if self.sol2.isChecked():
-            self.sol2.setText("Air")
-            self.sol2.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
-            jack.write_digital({dig: 0})
+            self.air()
         else:
-            self.sol2.setText("Cal")
-            self.sol2.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
-            jack.write_digital({dig: 1})
+            self.cals()
+
+    def cal0(self):
+        jack = self.devices.get('labjack')
+        dig = jack.get_labjack_address('sol_cals')
+        self.sol1.setText("Cal 0")
+        self.sol1.setStyleSheet("background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999;")  
+        jack.write_digital({dig: 0})
+
+    def cal1(self):
+        jack = self.devices.get('labjack')
+        dig = jack.get_labjack_address('sol_cals')
+        self.sol1.setText("Cal 1")
+        self.sol1.setStyleSheet("background-color: DodgerBlue; color: White; border: 1px solid #CC9999;")  
+        jack.write_digital({dig: 1})
+
+    def cals(self):
+        jack = self.devices.get('labjack')
+        dig = jack.get_labjack_address('sol_aircal')
+        self.sol2.setText("Cal")
+        self.sol2.setStyleSheet("background-color: DodgerBlue; color: White; border: 1px solid #CC9999;")  
+        jack.write_digital({dig: 1})
+
+    def air(self):
+        jack = self.devices.get('labjack')
+        dig = jack.get_labjack_address('sol_aircal')
+        self.sol2.setText("Air")
+        self.sol2.setStyleSheet("background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999;")  
+        jack.write_digital({dig: 0})
 
     def shutdown_menu(self, sensor_type):
         msg = QMessageBox()
