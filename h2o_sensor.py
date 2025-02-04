@@ -13,6 +13,9 @@ class Maycomm:
         """
         Initialize the Maycomm Water Vapor analyzer class with the device port and serial configuration.
 
+        There is a calibrated variable called H2Obest. The calibration equation is in the
+        parse_h2o function.
+
         Args:
             port (str): Serial port to connect to (e.g., 'COM3' or '/dev/ttyUSB0').
             baudrate (int, optional): Baud rate for serial communication. Default is 4800.
@@ -146,7 +149,12 @@ class Maycomm:
             filtered_variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
 
             # Create a dictionary by zipping variable names and corresponding data
-            return dict(zip(filtered_variables, filtered_data))
+            v = dict(zip(filtered_variables, filtered_data))
+
+            # add calibrated H2Obest variable to dict
+            calibrated = round(float(v[f'{self.prefix or ""}H2O_lg']) * 1.0, 2)
+            v[f'{self.prefix or ""}H2Obest'] = calibrated
+            return v
 
         except Exception as e:
             print(f"Error parsing Maycomm H2O packet. Data: {packet}. Error: {e}")

@@ -15,6 +15,9 @@ class O3_2Btech:
         """
         Initialize the 2Btech Ozone analyzer class with the device port and serial configuration.
 
+        There is a calibrated O3 variable called O3best. The equation for the calibration
+        is in the parse_o3 function.
+
         Args:
             port (str): Serial port to connect to (e.g., 'COM3' or '/dev/ttyUSB0').
             baudrate (int, optional): Baud rate for serial communication. Default is 4800.
@@ -22,6 +25,7 @@ class O3_2Btech:
             sim_mode (bool, optional): If True, simulate data instead of using the real device. Default is False.
             verbose (bool, optional): If True, print data to stdout (the screen).
             prefix (str, optional): Add a prefix to the data variable names.
+
         """
         self.port = port
         self.baudrate = baudrate
@@ -148,7 +152,12 @@ class O3_2Btech:
             filtered_variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
             
             # Create a dictionary by zipping variable names and corresponding data
-            return dict(zip(filtered_variables, filtered_data))
+            v = dict(zip(filtered_variables, filtered_data))
+
+            # add calibrated O3best variable to dict
+            calibrated = round(float(v[f'{self.prefix or ""}o3']) * 1.0, 3)
+            v[f'{self.prefix or ""}O3best'] = calibrated
+            return v
 
         except Exception as e:
             print(f"Error parsing O3 packet. Data: {packet}. Error: {e}")
