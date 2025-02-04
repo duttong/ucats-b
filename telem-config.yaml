@@ -1,10 +1,56 @@
-iwg_prefix: UCB
-ip: 192.168.1.100
-port: 5000
-rate: 5
-variables:
-  - datetime
-  - d1_CO2_ppm
-  - d1_N2O_ppb
-  - d2_CO_ppb
-  - d2_N2O_ppb
+# data variables and IP info for the MTS system
+mts:
+  iwg_prefix: UCB
+  ip: 10.1.10.50
+  port: 50023
+  rate: 1
+  variables:
+    - datetime
+    - d1_CO2_ppm
+    - d1_N2O_ppb
+    - d2_CO_ppb
+    - d2_N2O_ppb
+    - oz_O3best
+    - w_H2Obest
+    - oz_p
+    - d1_T_gas
+    - d2_T_gas
+
+# data variables and IPs for data transmission to ground stations
+data:
+  iwg_prefix: UCBdata
+  # list of ip address to send engineering data too.
+  ip: [10.1.10.50, 10.1.10.51, 10.1.10.52, 10.1.10.53, 10.1.10.54]
+  port: 50505
+  rate: 1   # frequency to send in seconds
+  variables:
+    - datetime
+    - d1_CO2_ppm
+    - d1_N2O_ppb
+    - d2_CO_ppb
+    - d2_N2O_ppb
+
+    - d1_P_mbars
+    - d1_T_gas
+    - d1_T_ambient
+    - d1_T_TEC
+    - d1_T_TEC_Sink
+    - d1_Det_PID
+    - d1_Laser_PID
+    - d1_Power_Input_mV
+    - d1_T_FET
+
+    - d2_P_mbars
+    - d2_T_gas
+    - d2_T_ambient
+    - d2_T_TEC_Sink
+
+    - oz_o3
+    - oz_o3best
+    - oz_t
+    - oz_p
+
+    - w_H2O_sh
+    - w_H2O_B
+    - w_H2O_lg
+    - w_H2Obest
