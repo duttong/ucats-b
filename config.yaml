@@ -23,9 +23,9 @@ devices:
 
     digouts:
       # variables used in instrument.py
-      FIO6: 'pilot_wd'
       FIO4: 'sol_cals'
       FIO5: 'sol_aircal'
+      FIO6: 'pilot_wd'
       FIO7: 'pumps'
 
     digins:
@@ -36,12 +36,6 @@ devices:
       # read once a second
       # The list of numbers in cal are coefficients for a polynomial.
       # [intercept, slope, quadratic, etc.]
-      AIN0:
-        var: 'amb_press'
-        cal: [0, 1]  
-      AIN1:
-        var: 'pump_speed'
-        cal: [0, 10, 2]
       AIN2:
         var: 'temp1'
         cal: [0, 1]
@@ -78,15 +72,15 @@ devices:
     sim_mode: false
     data_var_prefix: oz_
     display_vars:
+      - O3best
       - t
       - p
-      - o3
 
   H2O_sensor:
     serial_port: /dev/ttyUSB1
     sim_mode: false
     data_var_prefix: w_
     display_vars:
+      - H2Obest
       - H2O_sh
-      - H2O_B
       - H2O_lg
