@@ -11,7 +11,7 @@ devices:
     # Digital I/O are on lines FIO0-FIO3, EIO0-EIO3, and CIO0-CIO3
     # Analog Input are on lines AIN0-AIN3
     # There are two 0-5V DACs addressed via DAC0 and DAC1
-    sim_mode: false
+    sim_mode: true
     data_var_prefix: j_     # leave blank for no prefix
     display_vars:
       - temp1
