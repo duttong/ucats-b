@@ -23,6 +23,7 @@ class CSVPlotter(QMainWindow):
         self.win_name = win_name
         self.left_y_vars = left_y_vars or []
         self.right_y_vars = right_y_vars or []
+        self.user_modified_view = False
         self.offset = offset
         self.data = None
 
@@ -124,6 +125,9 @@ class CSVPlotter(QMainWindow):
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.toolbar.setStyleSheet(f"background-color: {self.c_toolbar}; padding: 0px; margin: 0px;")
 
+        # Connect canvas events to detect user interaction
+        self.canvas.mpl_connect('button_release_event', self.on_user_interaction)
+
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.toolbar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
@@ -132,13 +136,12 @@ class CSVPlotter(QMainWindow):
 
         self.new_csv_file = False
         self.load_button.clicked.connect(self.select_new_file)
-        self.plot_button.clicked.connect(self.plot_data)
+        self.plot_button.clicked.connect(self.plot_data_button)
         self.new_plot_button.clicked.connect(lambda: self.open_new_plot_window([self.left_y_vars[0]]))
 
-        self.update_interval = 1000
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_data)
-        self.timer.start(self.update_interval)
+        self.timer.start(1000)
 
         self.canvas.mpl_connect('draw_event', self.update_statistics)
         self.load_csv_data()
@@ -161,6 +164,11 @@ class CSVPlotter(QMainWindow):
         new_window.show()
         self.open_windows.append(new_window)  # Keep a reference to prevent garbage collection
 
+    def on_user_interaction(self, event):
+        """Set the flag when the user interacts with zoom or pan."""
+        if self.toolbar.mode in ['zoom rect', 'pan/zoom']:
+            self.user_modified_view = True
+
     def update_data(self):
         """
         Periodically load new data from the CSV file and update the plot.
@@ -168,6 +176,7 @@ class CSVPlotter(QMainWindow):
         if self.data is not None and not self.csv_file_label.text().endswith("No recent 'tdl-' CSV file found."):
             # Store the current x and y limits for both axes
             xlim = self.ax.get_xlim()
+            ylim = self.ax.get_ylim()
             ylim_left = self.ax.get_ylim()
             ylim_right = self.ax2.get_ylim() if self.ax2 else None
 
@@ -190,13 +199,14 @@ class CSVPlotter(QMainWindow):
             self.plot_data()
 
             # Restore x and y limits to maintain the zoom level
-            self.ax.set_xlim(xlim)
-            self.ax.set_ylim(ylim_left)
-            if ylim_right is not None:
-                self.ax2.set_ylim(ylim_right)
-
-            self.ax.relim()               # Recalculate limits based on the new data
-            self.ax.autoscale_view()      # Apply autoscaling to the view
+            if self.user_modified_view:
+                self.ax.set_xlim(xlim)
+                self.ax.set_ylim(ylim)
+                if ylim_right is not None:
+                    self.ax2.set_ylim(ylim_right)
+            else:
+                self.ax.relim()
+                self.ax.autoscale_view()
 
             # Redraw the canvas to reflect changes
             self.canvas.draw()
@@ -319,10 +329,14 @@ class CSVPlotter(QMainWindow):
             pass
             #print("No new rows to load.")
 
+    def plot_data_button(self):
+        self.user_modified_view = False
+        self.plot_data()
+
     def plot_data(self):
         if self.data is None:
             return
-
+        
         # Variables for left and right axes
         variable_1 = self.variable_combo_1.currentText()
         variable_2 = self.variable_combo_2.currentText()

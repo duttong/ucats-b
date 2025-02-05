@@ -5,7 +5,6 @@ triggers:
   cal_duration: 20    # time in S for cal sampling
 
 devices:
-  
   Labjack:
     # Labjack control
     # UCATS-B uses a T4 Labjack with 12 DIO, 4 A2D, and 2 DAC lines.
