@@ -195,6 +195,9 @@ class CSVPlotter(QMainWindow):
             if ylim_right is not None:
                 self.ax2.set_ylim(ylim_right)
 
+            self.ax.relim()               # Recalculate limits based on the new data
+            self.ax.autoscale_view()      # Apply autoscaling to the view
+
             # Redraw the canvas to reflect changes
             self.canvas.draw()
             
