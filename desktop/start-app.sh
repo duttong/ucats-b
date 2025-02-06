@@ -5,7 +5,7 @@ source /home/ucats/code/.venv/bin/activate
 
 cd /home/ucats/code
 
-sleep 3
+sleep 1
 
 # start instrument
 /home/ucats/code/.venv/bin/python /home/ucats/code/instrument.py >> /home/ucats/code/ucats-b.log 2>&1
