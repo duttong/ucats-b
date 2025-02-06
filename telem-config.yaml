@@ -1,7 +1,7 @@
 # data variables and IP info for the MTS system
 mts:
   iwg_prefix: UCB
-  ip: 10.1.10.50
+  ip: 10.11.96.10
   port: 50023
   rate: 1
   variables:
@@ -20,7 +20,7 @@ mts:
 data:
   iwg_prefix: UCBdata
   # list of ip address to send engineering data too.
-  ip: [10.1.10.50, 10.1.10.51, 10.1.10.52, 10.1.10.53, 10.1.10.54]
+  ip: [10.11.96.10, 10.11.96.11]
   port: 50505
   rate: 1   # frequency to send in seconds
   variables:
