@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=plotter
+Comment=Launches the csv plotter
+Exec=/home/ucats/code/desktop/start-plotter-app.sh
+Icon=/home/ucats/code/desktop/plotting.png
+Terminal=false
+Type=Application
+Categories=Utility;
+Path=/home/ucats/code

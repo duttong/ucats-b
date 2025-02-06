@@ -1,0 +1,4 @@
+These are Ubuntu desktop apps
+Make soft links to them from the desktop ie.
+ln -s /hats/ucats/Desktop/ucats-b.desktop /hats/ucats/code/desktop/ucats-b.desktop
+
