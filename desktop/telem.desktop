@@ -1,0 +1,14 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=telem
+Comment=Launches the UCATS B telemetry data
+Exec=/home/ucats/code/desktop/start-telem.sh
+Path=/home/ucats/code
+Terminal=false
+Type=Application
+Categories=Utility;
+Path=/home/ucats/code
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true

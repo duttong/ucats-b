@@ -7,3 +7,6 @@ Terminal=false
 Type=Application
 Categories=Utility;
 Path=/home/ucats/code
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true

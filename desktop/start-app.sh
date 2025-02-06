@@ -5,8 +5,7 @@ source /home/ucats/code/.venv/bin/activate
 
 cd /home/ucats/code
 
-# start telem (comment out if not needed)
-/home/ucats/code/.venv/bin/python /home/ucats/code/telem.py &
+sleep 3
 
 # start instrument
 /home/ucats/code/.venv/bin/python /home/ucats/code/instrument.py >> /home/ucats/code/ucats-b.log 2>&1
