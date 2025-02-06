@@ -2,7 +2,7 @@
 mts:
   iwg_prefix: UCB
   ip: 10.11.96.10
-  port: 50023
+  port: 7075
   rate: 1
   variables:
     - datetime
@@ -21,7 +21,7 @@ data:
   iwg_prefix: UCBdata
   # list of ip address to send engineering data too.
   ip: [10.11.96.10, 10.11.96.11]
-  port: 50505
+  port: 50555
   rate: 1   # frequency to send in seconds
   variables:
     - datetime
