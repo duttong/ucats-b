@@ -88,11 +88,24 @@ class LabJackController:
     def initialize_labjack(self):
         if self.sim_mode:
             print("Simulating Labjack communications.")
-        else:
-            self.handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if different.
-            self.initialize_digital_lines()
-            print(f"LabJack initialized with handle: {self.handle}")
-            return self.handle
+            return None  # Returning None in simulation mode
+
+        attempt = 0
+        max_attempts = 5
+
+        while attempt < max_attempts:
+            try:
+                self.handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if needed.
+                print(f"LabJack initialized successfully on attempt {attempt + 1} with handle: {self.handle}")
+                self.initialize_digital_lines()
+                return self.handle
+            except Exception as e:  # Properly catching exceptions
+                print(f"Labjack connection failed (attempt {attempt + 1}/{max_attempts}): {e}")
+                attempt += 1
+                time.sleep(1)  # Wait 1 second before retrying
+
+        print("Failed to initialize LabJack after multiple attempts.")
+        return None  # Return None if all attempts fail
 
     def initialize_digital_lines(self):
         """ Initialize all digital lines on the LabJack T4 to LOW (0) state. """
