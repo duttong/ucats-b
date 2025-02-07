@@ -208,7 +208,7 @@ class Aeris:
         for key in parsed_data.keys():
             try:
                 if "ppb" in key:
-                    parsed_data[key] = round(float(parsed_data[key]), 2)  # Convert ppb to ppt
+                    parsed_data[key] = round(float(parsed_data[key]), 2)  # Round
                 elif "ppm" in key:
                     parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)  # Convert ppm to ppb
                 elif "T_" in key:
