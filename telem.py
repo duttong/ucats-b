@@ -37,13 +37,29 @@ class TelemetryGUI(QWidget):
         self.setLayout(self.layout)
 
     def update_text_display(self, message):
-        text = self.text_display.toPlainText().split('\n')
-        text.append(message)
-        if len(text) > 100:
-            text = text[-100:]
-        self.text_display.setPlainText('\n'.join(text))
-        self.text_display.verticalScrollBar().setValue(self.text_display.verticalScrollBar().maximum())
+        text_edit = self.text_display
+        scroll_bar = text_edit.verticalScrollBar()
 
+        # Save the current scroll position
+        previous_scroll_position = scroll_bar.value()
+        at_bottom = previous_scroll_position == scroll_bar.maximum()
+
+        # Append new text
+        text_edit.append(message)
+
+        # Limit the number of lines to 100
+        max_lines = 100
+        while text_edit.document().blockCount() > max_lines:
+            cursor = text_edit.textCursor()
+            cursor.movePosition(cursor.Start)
+            cursor.select(cursor.LineUnderCursor)
+            cursor.removeSelectedText()
+            cursor.deleteChar()  # Remove new line
+
+        # Restore scroll position unless the user was at the bottom
+        if not at_bottom:
+            scroll_bar.setValue(previous_scroll_position)
+            
     def closeEvent(self, event):
         QApplication.quit()
 
@@ -57,7 +73,7 @@ class TelemetryWorker(QThread):
 
     def run(self):
         while self.running:
-            data = self.telem.load_csv_data()
+            data = self.telem.load_latest_csv()
             message = self.telem.send_data(data)
             if message:
                 self.data_signal.emit(message)
@@ -69,6 +85,7 @@ class TelemetryWorker(QThread):
 class SABER_telem:
     def __init__(self, data_system, config_file='telem-config.yaml', gui=None):
         self.type = data_system
+        self.csv_directory = Path.cwd()
         self.config = self.load_config(config_file)
         self.rate = self.config[data_system]['rate']
         self.ips = self.config[data_system]['ip']
@@ -78,7 +95,6 @@ class SABER_telem:
         self.iwg_prefix = self.config[data_system]['iwg_prefix']
         self.selected_columns = self.config[data_system]['variables']
         self.data = pd.DataFrame()
-        self.current_file_path = None
         self.gui = gui
         self.running = True
 
@@ -95,21 +111,26 @@ class SABER_telem:
             return [self.lowercase_keys(i) for i in data]
         else:
             return data
-
-    def load_csv_data(self):
+        
+    def get_latest_csv(self):
+        """Finds the latest CSV file in the directory."""
         csv_files = sorted(
-            Path('.').glob('ucatsb-*.csv'), 
-            key=lambda x: x.stat().st_mtime, 
+            self.csv_directory.glob('ucatsb-*.csv'),
+            key=lambda x: x.stat().st_mtime,
             reverse=True
         )
-        
-        if csv_files:
-            file_path = csv_files[0]
-            self.current_file_path = file_path
+        return csv_files[0] if csv_files else None
+
+    def load_latest_csv(self):
+        """Loads the newest CSV file if it's different from the last loaded file."""
+        latest_file = self.get_latest_csv()
+        if latest_file is None:
+            self.data = pd.DataFrame()
         else:
-            print("No recent 'ucatsb-' CSV file found.")
-            return pd.DataFrame()
-        
+            self.data = self.load_csv_data(latest_file)
+        return self.data
+
+    def load_csv_data(self, file_path):
         last_row_count = len(self.data) if self.data is not None else 0
         new_data = pd.read_csv(
             file_path, 
@@ -157,8 +178,9 @@ class SABER_telem:
             return None
 
     def run(self):
+        # used for headless running.
         while self.running:
-            data = self.load_csv_data()
+            data = self.load_latest_csv()
             self.send_data(data)
             time.sleep(self.rate)
 
