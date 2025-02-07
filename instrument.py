@@ -164,11 +164,9 @@ class TDL_package(QMainWindow):
                     [self.streams[device_name], pd.DataFrame(data)], ignore_index=True
                 )
 
-                # Update the display panel with the latest data
+                # Update the display panel with the most recent data
                 self.display_panel.update_display_data(device_name, data[-1])
                 self.display_panel.update_time_clocktime()
-                #if device_name == 'aeris_co2':
-                #    self.display_panel.update_time(data[-1])
 
                 # Handle pressure updates for the O3 sensor
                 if device_name == "o3_sensor":
@@ -179,8 +177,8 @@ class TDL_package(QMainWindow):
                 
                 elif device_name == "labjack":
                     # pilot switch variable name with prefix from config file
-                    lj_prefix = self.config['devices']['labjack']['data_var_prefix']
-                    switch = f"{lj_prefix}pilot_power"
+                    prefix = self.config['devices']['labjack']['data_var_prefix']
+                    switch = f"{prefix}pilot_power"
                     self.pilot_switch = data[0].get(switch, 1)
 
             except IndexError:
