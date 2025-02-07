@@ -131,24 +131,23 @@ class SABER_telem:
         return self.data
 
     def load_csv_data(self, file_path):
-        last_row_count = len(self.data) if self.data is not None else 0
-        new_data = pd.read_csv(
-            file_path, 
-            skiprows=range(1, last_row_count + 1), 
-            delimiter=',', 
-            engine='python', 
-            on_bad_lines='skip'
-        )
-        
-        if 'datetime' in new_data.columns:
-            new_data['datetime'] = pd.to_datetime(new_data['datetime'], errors='coerce')
+        try:
+            # Read the last 2 rows, ensuring we capture the second-to-last row
+            new_data = pd.read_csv(file_path, delimiter=',', engine='python', on_bad_lines='skip').tail(2).head(1)
 
-        if not new_data.empty:
-            self.data = pd.concat([self.data, new_data], ignore_index=True)
-            self.data = self.data.tail(100)
+            if 'datetime' in new_data.columns:
+                new_data['datetime'] = pd.to_datetime(new_data['datetime'], errors='coerce')
 
-            if self.selected_columns:
-                self.data = self.data.reindex(columns=self.selected_columns)
+            if not new_data.empty:
+                self.data = pd.concat([self.data, new_data], ignore_index=True)
+                self.data = self.data.drop_duplicates().sort_values(by='datetime').tail(100)
+
+                if self.selected_columns:
+                    self.data = self.data.reindex(columns=self.selected_columns)
+
+        except Exception as e:
+            print(f"Error loading CSV data: {e}")
+            time.sleep(0.1)  # Small delay to allow the file to stabilize
 
         return self.data
 
