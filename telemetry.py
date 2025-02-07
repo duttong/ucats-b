@@ -33,7 +33,7 @@ class Telemetry:
             timestamp = row['datetime']
 
             if pd.isnull(timestamp):
-                print("Warning: Missing datetime value, skipping send.")
+                #print("Warning: Missing datetime value, skipping send.")
                 return
 
             # Convert timestamp to string
