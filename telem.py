@@ -131,15 +131,24 @@ class SABER_telem:
         return self.data
 
     def load_csv_data(self, file_path):
-        last_row_count = len(self.data) if self.data is not None else 0
+        # Count total rows in the file
+        total_rows = sum(1 for _ in open(file_path)) - 1  # Subtract 1 for the header
+        
+        if total_rows < 2:
+            print("Not enough data to fetch the second-to-last row.")
+            return self.data
+
+        second_last_row = total_rows - 1  # Second-to-last row index (0-based)
+        
+        # Read only the second-to-last row
         new_data = pd.read_csv(
             file_path, 
-            skiprows=range(1, last_row_count + 1), 
+            skiprows=lambda x: x != 0 and x != second_last_row,  # Keep header (x=0) and second-to-last row
             delimiter=',', 
             engine='python', 
             on_bad_lines='skip'
         )
-        
+
         if 'datetime' in new_data.columns:
             new_data['datetime'] = pd.to_datetime(new_data['datetime'], errors='coerce')
 
