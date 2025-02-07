@@ -5,8 +5,23 @@ import datetime
 import subprocess
 import threading
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtGui import QFont, QColor, QPalette
 from PyQt5.QtCore import Qt
+
+class PilotIndicator(QLabel):
+    """ Pilot fail light indecator. This will flash between yellow and blue
+        if the watchdog is working. """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(20, 20)  # Small circular indicator
+        self.setAutoFillBackground(True)
+        self.update_indicator(0)  # Default to yellow
+
+    def update_indicator(self, value):
+        color = QColor("yellow") if value == 0 else QColor("LightSkyBlue")
+        palette = self.palette()
+        palette.setColor(QPalette.Window, color)
+        self.setPalette(palette)
 
 class DisplayPanel(QWidget):
     def __init__(self, config_file, devices=None):
@@ -35,55 +50,66 @@ class DisplayPanel(QWidget):
     def initUI(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)  # Adjust margins
-        layout.setSpacing(10)  # Spacing between the time and the grid
-
-        # Display current date and time
-        self.time_label = QLabel()
-        layout.addWidget(self.time_label)
-        self.update_time({'datetime': datetime.datetime.now()})
+        layout.setSpacing(10)  # Spacing between sections
 
         self.data_labels = {}  # Store labels to update later
 
+        # === Top Section: Date/Time & Pilot Indicator ===
+        top_layout = QHBoxLayout()
+
+        # Date/Time Label
+        self.time_label = QLabel()
+        self.update_time_clocktime()
+        top_layout.addWidget(self.time_label, alignment=Qt.AlignLeft)
+
+        # Pilot Indicator
+        self.pilot_indicator = PilotIndicator(self)
+        top_layout.addWidget(self.pilot_indicator, alignment=Qt.AlignRight)
+
+        # Add the top section to the main layout
+        layout.addLayout(top_layout)
+
+        # === Device Grid Layout ===
         grid = QGridLayout()
         grid.setSpacing(5)  # Adjust spacing between rows
 
         row = [0, 0, 0]
         for device_name, device_info in self.config['devices'].items():
             device_name = device_name.lower()
-            # Skip the device if 'display_vars' is empty or missing
             if not device_info.get('display_vars'):
                 continue
 
             colinc = 0
-            if device_name == "h2o_sensor" or device_name == "o3_sensor" or device_name == "labjack":
+            if device_name in ["h2o_sensor", "o3_sensor", "labjack"]:
                 colinc = 2
 
             # Device label with larger font and bold style
             device_label = QLabel(f"{device_name}")
-            device_label.setFont(QFont('Arial', 16, QFont.Bold))  # Larger, bold font
+            device_label.setFont(QFont('Arial', 16, QFont.Bold))
             device_label.setStyleSheet("color: #2E8B57;")  # Optional: Set color
             grid.addWidget(device_label, row[colinc], colinc, 1, 2)  # Span across 2 columns
             row[colinc] += 1
 
             prefix = self.config['devices'][device_name]['data_var_prefix']
 
-            # For each display variable, add a QLabel for both the name and the value
+            # Add labels for each variable
             for var in device_info['display_vars']:
                 var_label = QLabel(f"   {prefix}{var}: ")
-                var_label.setFont(QFont('Arial', 12))  # Smaller font for variable name
+                var_label.setFont(QFont('Arial', 12))
                 grid.addWidget(var_label, row[colinc], 0+colinc, alignment=Qt.AlignLeft)
 
-                # Create a label to hold the variable's value
                 value_label = QLabel("N/A")
                 value_label.setFont(QFont('Arial', 12))
                 value_label.setStyleSheet("color: #11e;")  # Optional: Blue color for value
                 grid.addWidget(value_label, row[colinc], 1+colinc, alignment=Qt.AlignRight)
 
-                # Save the label reference to update later
                 self.data_labels[f"{device_name}_{prefix}{var}"] = value_label
                 row[colinc] += 1
 
+        # Add the device grid below the date/time and pilot indicator
         layout.addLayout(grid)
+
+        # === Buttons Section ===
         self.sequence_button = QPushButton("Idle")
         self.sequence_button.setCheckable(True)
         self.sequence_button.clicked.connect(self.sequence_run)
@@ -91,23 +117,23 @@ class DisplayPanel(QWidget):
 
         sol_layout = QHBoxLayout()
         self.sol1 = QPushButton("Sol: Cal0/Cal1")
-        self.sol1.setCheckable(True)  # Makes the button toggle
+        self.sol1.setCheckable(True)
         self.sol1.clicked.connect(self.sol_cals)
-        self.sol1.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+        self.sol1.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")
 
         self.sol2 = QPushButton("Sol: Air/Cal")
-        self.sol2.setCheckable(True)  # Makes the button toggle
+        self.sol2.setCheckable(True)
         self.sol2.clicked.connect(self.sol_aircal)
-        self.sol2.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+        self.sol2.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")
 
         sol_layout.addWidget(self.sol1)
         sol_layout.addWidget(self.sol2)
         layout.addLayout(sol_layout)
 
         self.pumps_tog = QPushButton("Pumps Off")
-        self.pumps_tog.setCheckable(True)  # Makes the button toggle
+        self.pumps_tog.setCheckable(True)
         self.pumps_tog.clicked.connect(self.pumps_onoff)
-        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  # Light red when OFF
+        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")
         layout.addWidget(self.pumps_tog)
 
         aeris_layout = QHBoxLayout()
@@ -126,10 +152,10 @@ class DisplayPanel(QWidget):
         aeris_layout.addWidget(self.co_reboot_button)
         layout.addLayout(aeris_layout)
         
-        # received a off signal from pilot
+        # Shutdown Button
         self.shutdown_trigger = QPushButton("SHUTDOWN")
         self.shutdown_trigger.clicked.connect(self.shutdown_menu)
-        self.shutdown_trigger.setStyleSheet("background-color: DarkRed; color: white; border: 1px solid #CC9999;")  # Light red when OFF
+        self.shutdown_trigger.setStyleSheet("background-color: DarkRed; color: white; border: 1px solid #CC9999;")
         layout.addWidget(self.shutdown_trigger)
 
         self.setLayout(layout)
@@ -150,6 +176,14 @@ class DisplayPanel(QWidget):
 
     def update_display_data(self, device_name, data):
         """ Update the display with new data for a given device. """
+
+        # Update pilot indicator based on pilot_wd
+        if device_name == 'labjack':
+            prefix = self.config['devices'][device_name]['data_var_prefix']
+            pilot_wd_value = data.get(f"{prefix}pilot_wd", 0)  # Default to 0 if missing
+            #pilot_wd_value = datetime.datetime.now().second % 2 == 0
+            self.pilot_indicator.update_indicator(pilot_wd_value)
+
         for var_name, var_value in data.items():
             # Construct the key used to store labels (device name + variable name)
             label_key = f"{device_name}_{var_name}"
