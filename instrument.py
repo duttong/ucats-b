@@ -84,7 +84,7 @@ class TDL_package(QMainWindow):
             
             # Connect device and initialize stream
             device.connect()
-            time.sleep(1)   # wait a little for each device
+            time.sleep(.1)   # wait a little for each device
             self.devices[device_name] = device
             self.streams[device_name] = pd.DataFrame()
 
