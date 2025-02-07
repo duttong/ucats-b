@@ -97,6 +97,8 @@ class SABER_telem:
         self.data = pd.DataFrame()
         self.gui = gui
         self.running = True
+        self.last_sent_timestamp = None
+        self.check_sent = 0
 
     def load_config(self, file_path):
         with open(file_path, 'r') as file:
@@ -152,30 +154,47 @@ class SABER_telem:
         return self.data
 
     def send_data(self, data):
-        try:
-            if data.empty:
-                return
+            try:
+                if data.empty:
+                    return
 
-            row = data.iloc[-1]
-            timestamp = row['datetime']
-            if pd.isnull(timestamp):
-                print("Warning: Missing datetime value, skipping send.")
-                return
+                row = data.iloc[-1]  # Get the most recent row
+                timestamp = row['datetime']
 
-            timestamp = timestamp.strftime('%Y%m%dT%H%M%S')
-            values = ",".join(map(str, row.drop(labels=['datetime']).values))
-            message = f"{self.iwg_prefix},{timestamp},{values}"
+                if pd.isnull(timestamp):
+                    print("Warning: Missing datetime value, skipping send.")
+                    return
 
-            for ip in self.ips:
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    sock.sendto(message.encode('utf-8'), (ip, self.port))
+                # Convert timestamp to string
+                timestamp_str = timestamp.strftime('%Y%m%dT%H%M%S')
 
-            return message
+                # Check if this timestamp was already sent
+                if self.last_sent_timestamp == timestamp_str:
+                    self.check_sent += 1
+                    if self.check_sent < 10:
+                        #print(f"Duplicate timestamp detected ({timestamp_str}), skipping send.")
+                        return  # Do not send duplicate timestamps
+                    else:
+                        self.check_sent = 0
 
-        except Exception as e:
-            print(f"Error sending data: {e}")
-            return None
+                # Prepare message
+                values = ",".join(map(str, row.drop(labels=['datetime']).values))
+                message = f"{self.iwg_prefix},{timestamp_str},{values}"
 
+                # Send to all configured IPs
+                for ip in self.ips:
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(message.encode('utf-8'), (ip, self.port))
+
+                # Update last sent timestamp
+                self.last_sent_timestamp = timestamp_str
+
+                return message  # Return the sent message for verification
+
+            except Exception as e:
+                print(f"Error sending data: {e}")
+                return None
+        
     def run(self):
         # used for headless running.
         while self.running:
