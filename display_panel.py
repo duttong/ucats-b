@@ -135,8 +135,16 @@ class DisplayPanel(QWidget):
         self.setLayout(layout)
 
     def update_time(self, data):
+        """ uses datetime in the data packet """
         packet_time = data['datetime'].strftime("%Y-%m-%d %H:%M:%S")
         self.time_label.setText(f"{packet_time}")
+        self.time_label.setFont(QFont('Arial', 18, QFont.Bold))  # Bold current time display
+        self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
+
+    def update_time_clocktime(self):
+        """ uses the Pi clock time """
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.time_label.setText(f"{current_time}")
         self.time_label.setFont(QFont('Arial', 18, QFont.Bold))  # Bold current time display
         self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
 

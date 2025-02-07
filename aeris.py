@@ -204,16 +204,22 @@ class Aeris:
         # Combine variables and data into a dictionary
         parsed_data = dict(zip(variables, data))
 
-        # Convert values to float if their variable name contains "ppb"
+        # Convert values to float and round based on variable name
         for key in parsed_data.keys():
-            if "ppb" in key:
-                try:
-                    parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)
-                except ValueError:
-                    raise ValueError(f"Cannot convert value of '{key}' to float: {parsed_data[key]}")
-            elif "T_" in key:
-                parsed_data[key] = round(float(parsed_data[key]), 2)
-                
+            try:
+                if "ppb" in key:
+                    parsed_data[key] = round(float(parsed_data[key]), 2)  # Convert ppb to ppt
+                elif "ppm" in key:
+                    parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)  # Convert ppm to ppb
+                elif "T_" in key:
+                    parsed_data[key] = round(float(parsed_data[key]), 2)  # Round temperature values
+                elif "mbar" in key:
+                    parsed_data[key] = round(float(parsed_data[key]), 2)  # Round pressure values
+                elif "Power" in key:
+                    parsed_data[key] = round(float(parsed_data[key]), 2)  # Round power values
+            except ValueError:
+                raise ValueError(f"Cannot convert value of '{key}' to float: {parsed_data[key]}")
+                            
         # Drop items that contain "Unused" in the key
         parsed_data = {key: value for key, value in parsed_data.items() if "Unused" not in key}
         return parsed_data

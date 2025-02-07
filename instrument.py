@@ -166,8 +166,9 @@ class TDL_package(QMainWindow):
 
                 # Update the display panel with the latest data
                 self.display_panel.update_display_data(device_name, data[-1])
-                if device_name == 'aeris_co2':
-                    self.display_panel.update_time(data[-1])
+                self.display_panel.update_time_clocktime()
+                #if device_name == 'aeris_co2':
+                #    self.display_panel.update_time(data[-1])
 
                 # Handle pressure updates for the O3 sensor
                 if device_name == "o3_sensor":
