@@ -207,9 +207,9 @@ class Aeris:
         # Convert values to float and round based on variable name
         for key in parsed_data.keys():
             try:
-                if "ppb" in key:
+                if "ppm" in key:
                     parsed_data[key] = round(float(parsed_data[key]), 2)  # Round
-                elif "ppm" in key:
+                elif "ppb" in key:
                     parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)  # Convert ppm to ppb
                 elif "T_" in key:
                     parsed_data[key] = round(float(parsed_data[key]), 2)  # Round temperature values

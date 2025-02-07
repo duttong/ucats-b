@@ -143,7 +143,7 @@ class DisplayPanel(QWidget):
 
     def update_time_clocktime(self):
         """ uses the Pi clock time """
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.time_label.setText(f"{current_time}")
         self.time_label.setFont(QFont('Arial', 18, QFont.Bold))  # Bold current time display
         self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
