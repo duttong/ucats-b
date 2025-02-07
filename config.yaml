@@ -20,10 +20,6 @@ devices:
     display_vars:
       - temp1
       - pilot_power
-      - pilot_wd
-      - pumps
-      - sol_cals
-      - sol_aircal
 
     digouts:
       # variables used in instrument.py
