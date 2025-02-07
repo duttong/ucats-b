@@ -4,6 +4,10 @@ triggers:
   air_duration: 300   # time in S for air sampling
   cal_duration: 20    # time in S for cal sampling
 
+telemetry:
+  enable: true
+  config: telem-config.yaml
+
 devices:
   Labjack:
     # Labjack control

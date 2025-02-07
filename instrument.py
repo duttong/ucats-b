@@ -17,6 +17,7 @@ from aeris import Aeris
 from display_panel import DisplayPanel
 from h2o_sensor import Maycomm
 from o3_sensor import O3_2Btech
+from telemetry import Telemetry
 
 
 class TDL_package(QMainWindow):
@@ -35,6 +36,7 @@ class TDL_package(QMainWindow):
         self.alt_high = float(self.config['triggers'].get('alt_high', 700))     # default 700 if missing
         self.alt_low = float(self.config['triggers'].get('alt_low', 800))       # default 800 if missing
         self.start_time = datetime.now()
+        self.telemetry = Telemetry(config_file)
 
         self.setWindowTitle("UCATS-B")
         self.setGeometry(100, 100, 250, 350)
@@ -205,10 +207,11 @@ class TDL_package(QMainWindow):
         if self.last_saved_datetime is not None:
             full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
 
-        # Save new data to CSV
+        # Save new data to CSV and send most recent data to telemetry
         if not full_data.empty:
             full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
             self.last_saved_datetime = full_data['datetime'].max()
+            self.telemetry.send_data(full_data)
 
         # Limit the memory footprint for each stream
         for stream_name in self.streams.keys():
