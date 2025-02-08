@@ -244,7 +244,7 @@ class Aeris:
         else:
             # new inst
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
-            n2o_corr = (n2o*1.088*1000 - 14.0)/1000
+            n2o_corr = (n2o*1.0088*1000 - 14.0)/1000
             co2 = float(data_dict.get(f'{self.prefix}CO2_ppm', float('nan')))
             co2_corr = co2*1.029 - 3.9
             data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
