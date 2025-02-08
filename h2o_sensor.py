@@ -28,8 +28,9 @@ class Maycomm:
         self.baudrate = baudrate
         self.timeout = timeout
         self.ser = None
-        self.variables = ['H2O_sh', 'H2O_B', 'H2O_lg', 'H2O_CD', 'p', 't', 't_elec', 'amp', 'pow', 'pos', 'zer', 'posB']
-        self.prefix = prefix
+        self.variables_org = ['H2O_sh', 'H2O_B', 'H2O_lg', 'H2O_CD', 'p', 't', 't_elec', 'amp', 'pow', 'pos', 'zer', 'posB']
+        self.variables = self.variables_org + ['H2Obest']
+        self.prefix = '' if prefix is None else prefix
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
         self.lock = threading.Lock()  # For thread safety when accessing data
@@ -146,24 +147,63 @@ class Maycomm:
             filtered_data = [current_datetime] + filtered_data
 
             # Add prefix to variables if provided, otherwise use unmodified names
-            filtered_variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
+            filtered_variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables_org]
 
             # Create a dictionary by zipping variable names and corresponding data
             v = dict(zip(filtered_variables, filtered_data))
 
             # add calibrated H2Obest variable to dict
-            calibrated = round(float(v[f'{self.prefix or ""}H2O_lg']) * 1.0, 2)
-            v[f'{self.prefix or ""}H2Obest'] = calibrated
+            v = self.calibrated_variables(v)
             return v
 
         except Exception as e:
             print(f"Error parsing Maycomm H2O packet. Data: {packet}. Error: {e}")
             return {}
+        
+    def calibrated_variables(self, data_dict):
+        """ From Eric. From original UCATS QNX code.
+        H2O from Maycomm.tmc:
+        #define USECD  200    // use lines CD when the corrected long path is less than 200 ppm
+        #define USEShort  2000    // use short path when the corrected long path is greater than 2000 ppm
+        #define ZeroOffset -3.6   // zero offset for lines CD, switched from -6.6 on 5/28/2022
+
+        tdl_shortcorr = -824 + 1.160*tdl_shortH2O;
+        tdl_longcorr = -9.62 + .776*tdl_longH2O*(1 + .0003*tdl_p) + .00099*tdl_longH2O*tdl_longH2O/(1 + .00176*tdl_p);
+        tdl_CDcorr = ZeroOffset + (.778*tdl_H2OCD + .00132*tdl_H2OCD*tdl_H2OCD)/(1 + .000268*tdl_p);
+        tdl_best = tdl_longcorr;
+
+        if (tdl_longcorr < USECD) tdl_best = tdl_CDcorr;
+        if (tdl_longcorr > USEShort) tdl_best = tdl_shortcorr;
+        """
+        USECD = 200
+        USESH = 2000
+        ZERO = -3.6
+
+        p = float(data_dict[f'{self.prefix}p'])
+        sh = float(data_dict[f'{self.prefix}H2O_sh'])
+        sh_corr = -824 + 1.160*sh
+        lg = float(data_dict[f'{self.prefix}H2O_lg'])
+        lg_corr = -9.62 + .776*lg*(1 + .0003*p) + .00099*lg*lg/(1 + .00176*p)
+        cd = float(data_dict[f'{self.prefix}H2O_CD'])
+        cd_corr = ZERO + (.778*cd + .00132*cd*cd)/(1 + .000268*p)
+        
+        best = cd_corr if lg_corr < USECD else sh_corr if lg_corr > USESH else lg_corr
+
+        # save the corrected variables
+        # overwrite H2O_sh, H2O_lg, and H2O_CD
+        # keep the original for now
+        #data_dict[f'{self.prefix}H2O_sh'] = sh_corr
+        #data_dict[f'{self.prefix}H2O_lg'] = lg_corr
+        #data_dict[f'{self.prefix}H2O_CD'] = cd_corr
+
+        # add H2Obest to dict
+        data_dict[f'{self.prefix}H2Obest'] = round(best, 2)
+        return data_dict
     
     def generate_test_data(self):
         """Generate a test data packet with random values."""
 
-        # Define ranges dynamically using self.variables
+        # Define ranges dynamically using self.variables_org
         ranges = {
             "H2O_sh": (0.0, 100.0),
             "H2O_B": (0.0, 100.0),
@@ -179,17 +219,17 @@ class Maycomm:
             "posB": (0.0, 10.0),
         }
 
-        # Filter ranges to only include variables in self.variables
-        filtered_ranges = {var: ranges[var] for var in self.variables if var in ranges}
+        # Filter ranges to only include variables in self.variables_org
+        filtered_ranges = {var: ranges[var] for var in self.variables_org if var in ranges}
         
-        # Generate random values for each variable in self.variables
+        # Generate random values for each variable in self.variables_org
         test_values = {
             var: round(random.uniform(*filtered_ranges[var]), 2 if var != "p" else 1)
-            for var in self.variables
+            for var in self.variables_org
         }
 
         # Construct the test data packet as a space-separated string
-        packet = " ".join(str(test_values[var]) for var in self.variables) + "\r\n"
+        packet = " ".join(str(test_values[var]) for var in self.variables_org) + "\r\n"
         return packet
     
     

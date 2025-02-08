@@ -31,8 +31,9 @@ class O3_2Btech:
         self.baudrate = baudrate
         self.timeout = timeout
         self.ser = None
-        self.variables = ['o3', 't', 'p', 'flow_a', 'flow_b']   # variables parsed from sensor
-        self.prefix = prefix
+        self.variables_org = ['o3', 't', 'p', 'flow_a', 'flow_b']   # variables parsed from sensor
+        self.variables = self.variables_org + ['o3best']        # with additional variable(s)
+        self.prefix = '' if prefix is None else prefix
         self.data_buffer = []  # Buffer to store incoming data
         self.is_collecting = False
         self.lock = threading.Lock()  # For thread safety when accessing data
@@ -149,20 +150,48 @@ class O3_2Btech:
             filtered_data = [current_datetime] + filtered_data
             
             # Add prefix to variables if provided, otherwise use unmodified names
-            filtered_variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
+            filtered_variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables_org]
             
             # Create a dictionary by zipping variable names and corresponding data
             v = dict(zip(filtered_variables, filtered_data))
 
             # add calibrated O3best variable to dict
-            calibrated = round(float(v[f'{self.prefix or ""}o3']) * 1.0, 3)
-            v[f'{self.prefix or ""}O3best'] = calibrated
+            v = self.calibrated_variables(v)
+
             return v
 
         except Exception as e:
             print(f"Error parsing O3 packet. Data: {packet}. Error: {e}")
             return {}
     
+    def calibrated_variables(self, data_dict):
+        """ From Eric. From original UCATS QNX code.
+        o3xprescorr = 1.147*o3xpres - 244.54
+        o3xbest = 0.961*((o3x-3.0) * o3xpres)/o3xprescorr
+        duplicate o3xflowa o3xflowacorr
+        duplicate o3xflowb o3xflowbcorr
+        o3xflowacorr = o3xflowa*o3xpres/o3xprescorr
+        o3xflowbcorr = o3xflowb*o3xpres/o3xprescorr
+        """
+        p = float(data_dict[f'{self.prefix}p'])
+        press_corr = p * 1.147 - 244.54
+        o3 = float(data_dict[f'{self.prefix}o3'])
+        o3best = 0.961*((o3-3.0) * p)/press_corr
+        flowa = float(data_dict[f'{self.prefix}flow_a'])
+        flowa_corr = flowa * p/press_corr
+        flowb = float(data_dict[f'{self.prefix}flow_b'])
+        flowb_corr = flowb * p/press_corr
+
+        # save the corrected variables
+        # overwrite p, flow_a, flow_b
+        data_dict[f'{self.prefix}p'] = press_corr
+        data_dict[f'{self.prefix}flow_a'] = flowa_corr
+        data_dict[f'{self.prefix}flow_b'] = flowb_corr
+
+        # add o3best to dict
+        data_dict[f'{self.prefix}o3best'] = o3best
+        return data_dict
+
     def generate_test_data(self):
         """Generate a test data packet with random values."""
 
@@ -191,8 +220,8 @@ class O3_2Btech:
             "flow_b": round(random.uniform(0.5, 2.0), 2), # Flow B in L/min
         }
 
-        # Use self.variables to construct the output packet
-        packet = ",".join(str(test_values[var]) for var in self.variables) + "\r\n"
+        # Use self.variables_org to construct the output packet
+        packet = ",".join(str(test_values[var]) for var in self.variables_org) + "\r\n"
         return packet
 
 if __name__ == "__main__":

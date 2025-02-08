@@ -10,7 +10,7 @@ mts:
     - d1_N2O_ppb
     - d2_CO_ppb
     - d2_N2O_ppb
-    - oz_O3best
+    - oz_o3best
     - w_H2Obest
     - oz_p
     - d1_T_gas
