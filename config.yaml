@@ -52,7 +52,9 @@ devices:
       - T_TEC
       - Det_PID
       - N2O_ppb
+      - N2Oc_ppb
       - CO2_ppm
+      - CO2c_ppm
 
   Aeris_CO:
     inst_num: 1   # don't change this
@@ -65,7 +67,9 @@ devices:
       - T_ambient
       - T_TEC_Sink
       - N2O_ppb
+      - N2Oc_ppb
       - CO_ppb
+      - COc_ppb
 
   O3_sensor:
     serial_port: /dev/ttyUSB2
