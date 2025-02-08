@@ -9,37 +9,6 @@ telemetry:
   config: telem-config.yaml
 
 devices:
-  Labjack:
-    # Labjack control
-    # UCATS-B uses a T4 Labjack with 12 DIO, 4 A2D, and 2 DAC lines.
-    # Digital I/O are on lines FIO0-FIO3, EIO0-EIO3, and CIO0-CIO3
-    # Analog Input are on lines AIN0-AIN3
-    # There are two 0-5V DACs addressed via DAC0 and DAC1
-    sim_mode: false
-    data_var_prefix: j_     # leave blank for no prefix
-    display_vars:
-      - temp1
-      - pilot_power
-
-    digouts:
-      # variables used in instrument.py
-      FIO4: 'sol_cals'
-      FIO5: 'sol_aircal'
-      FIO6: 'pilot_wd'
-      FIO7: 'pumps'
-
-    digins:
-      # these addresses are read every second
-      CIO0: 'pilot_power'
-
-    analog:
-      # read once a second
-      # The list of numbers in cal are coefficients for a polynomial.
-      # [intercept, slope, quadratic, etc.]
-      AIN2:
-        var: 'temp1'
-        cal: [0, 1]
-
   Aeris_CO2:
     inst_num: 2   # don't change this
     serial_port: /dev/ttyUSB0
@@ -88,3 +57,34 @@ devices:
       - H2Obest
       - H2O_sh
       - H2O_lg
+
+  Labjack:
+    # Labjack control
+    # UCATS-B uses a T4 Labjack with 12 DIO, 4 A2D, and 2 DAC lines.
+    # Digital I/O are on lines FIO0-FIO3, EIO0-EIO3, and CIO0-CIO3
+    # Analog Input are on lines AIN0-AIN3
+    # There are two 0-5V DACs addressed via DAC0 and DAC1
+    sim_mode: false
+    data_var_prefix: j_     # leave blank for no prefix
+    display_vars:
+      - temp1
+      - pilot_power
+
+    digouts:
+      # variables used in instrument.py
+      FIO4: 'sol_cals'
+      FIO5: 'sol_aircal'
+      FIO6: 'pilot_wd'
+      FIO7: 'pumps'
+
+    digins:
+      # these addresses are read every second
+      CIO0: 'pilot_power'
+
+    analog:
+      # read once a second
+      # The list of numbers in cal are coefficients for a polynomial.
+      # [intercept, slope, quadratic, etc.]
+      AIN2:
+        var: 'temp1'
+        cal: [0, 1]

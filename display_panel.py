@@ -80,7 +80,7 @@ class DisplayPanel(QWidget):
                 continue
 
             colinc = 0
-            if device_name in ["h2o_sensor", "o3_sensor", "labjack"]:
+            if device_name in ["aeris_co", "o3_sensor", "labjack"]:
                 colinc = 2
 
             # Device label with larger font and bold style
