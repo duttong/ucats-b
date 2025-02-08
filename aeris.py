@@ -236,15 +236,15 @@ class Aeris:
         if self.inst_num == 1:
             # old inst
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
-            n2o_corr = n2o*1.0363 - 6.2
+            n2o_corr = (n2o*1036.3 - 6.2)/1000
             co = float(data_dict.get(f'{self.prefix}CO_ppb', float('nan')))
-            co_corr = co*1.179 - 12.7
+            co_corr = (co*1179 - 12.7)/1000
             data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
             data_dict[f'{self.prefix}COc_ppb'] = co_corr
         else:
             # new inst
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
-            n2o_corr = n2o*1.088 - 14.0
+            n2o_corr = (n2o*1088 - 14.0)/1000
             co2 = float(data_dict.get(f'{self.prefix}CO2_ppm', float('nan')))
             co2_corr = co2*1.029 - 3.9
             data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
