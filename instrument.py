@@ -158,7 +158,6 @@ class TDL_package(QMainWindow):
     def collect_data(self):
         # Fetch data and append to respective streams
         # update variables like self.pressure that are from sensors.
-        dur = time.time()
         for device_name, device in self.devices.items():
             try:
                 data = device.get_all_data()
@@ -216,8 +215,6 @@ class TDL_package(QMainWindow):
         # Limit the memory footprint for each stream
         for stream_name in self.streams.keys():
             self.streams[stream_name] = self.streams[stream_name].tail(self.stream_size)
-
-        #print(f'collected: {time.time()-dur} {time.time()}')
 
     def stop_collection(self):
         # Stop data collection and disconnect devices

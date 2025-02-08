@@ -31,7 +31,7 @@ class Aeris:
         self.lock = threading.Lock()  # This lock is for the shared data buffer
         self.serial_lock = threading.Lock()  # This lock is specifically for serial communication
         self.verbose = verbose
-        self.prefix = prefix
+        self.prefix = '' if prefix is None else prefix
         self.sim_mode = sim_mode
         self.inst_num = inst_num
 
@@ -39,12 +39,13 @@ class Aeris:
         # NOTE: The order of these variables is important since they line up with the raw data.
         if inst_num == 1:
             # CO instrument
-            self.variables = [
+            self.variables_org = [
                 "Unused_0", "P_mbars", "T_gas", "T_ambient", "Unused_1", "Unused_2",
                 "N2O_ppb", "H2O_ppm", "CO_ppb", "T_TEC_Sink", "Unused_3"]
+            self.variables = self.variables_org + ['COc_ppb', 'N2Oc_ppb']
             
         else:
-            self.variables = [
+            self.variables_org = [
                 "Unused_0", "P_mbars", "T_gas", "Unused_1", "T_ambient", "Unused_2", "Unused_3", 
                 "Laser_PID", "Det_PID", "Unused_4", "Unused_5", "Unused_6",
                 "Unused_7", "Unused_8", "Unused_9", "Unused_10", "Unused_11", "Unused_12", 
@@ -53,6 +54,8 @@ class Aeris:
                 "Ramp_Ampl", "Unused_25", "CO2_ppm", "H2O_ppm", "Unused_26", "N2O_ppb", 
                 "Power_Input_mV", "T_FET", "T_TEC", "T_TEC_Sink", 
                 "TEC_Power", "Unused_27"]
+            self.variables = self.variables_org + ['CO2c_ppm', 'N2Oc_ppb']
+            
         
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
@@ -195,7 +198,7 @@ class Aeris:
         data[0] = current_datetime
 
         # Apply prefix if provided
-        variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables]
+        variables = ['datetime'] + [f'{self.prefix or ""}{var}' for var in self.variables_org]
         
         # Check if the data length matches the expected number of variables
         if len(data) != len(variables):
@@ -203,6 +206,9 @@ class Aeris:
 
         # Combine variables and data into a dictionary
         parsed_data = dict(zip(variables, data))
+
+        # add calibrated data
+        parsed_data = self.calibrated(parsed_data)
 
         # Convert values to float and round based on variable name
         for key in parsed_data.keys():
@@ -224,6 +230,27 @@ class Aeris:
         parsed_data = {key: value for key, value in parsed_data.items() if "Unused" not in key}
         return parsed_data
     
+    def calibrated(self, data_dict):
+
+        # calibrations from 20250208
+        if self.inst_num == 1:
+            # old inst
+            n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
+            n2o_corr = n2o*1.0363 - 6.2
+            co = float(data_dict.get(f'{self.prefix}CO_ppb', float('nan')))
+            co_corr = co*1.179 - 12.7
+            data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
+            data_dict[f'{self.prefix}COc_ppb'] = co_corr
+        else:
+            # new inst
+            n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
+            n2o_corr = n2o*1.088 - 14.0
+            co2 = float(data_dict.get(f'{self.prefix}CO2_ppm', float('nan')))
+            co2_corr = co2*1.029 - 3.9
+            data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
+            data_dict[f'{self.prefix}CO2c_ppm'] = co2_corr
+        return data_dict
+
     def generate_test_data(self):
         """
         Generate simulated data for all variables.
@@ -234,7 +261,7 @@ class Aeris:
         current_time = datetime.now().replace(microsecond=0)
         simulated_data = []
 
-        for var in self.variables:
+        for var in self.variables_org:
             if var == "datetime":
                 simulated_data.append(str(current_time))
             elif var == "P_mbars":
@@ -250,7 +277,7 @@ class Aeris:
             elif var == "N2O_ppb":
                 simulated_data.append(f"{round(random.uniform(.300, .400), 2):.2f}")
             elif var in ["CO2_ppm", "CO_ppb"]:
-                simulated_data.append(f"{round(random.uniform(0, 10), 2):.2f}")
+                simulated_data.append(f"{round(random.uniform(200, 400), 2):.2f}")
             elif var == "H2O_ppm":
                 simulated_data.append(f"{round(random.uniform(.1000, .2000), 2):.2f}")
             elif var == "Power_Input_mV":
