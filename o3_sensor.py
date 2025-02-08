@@ -184,12 +184,12 @@ class O3_2Btech:
 
         # save the corrected variables
         # overwrite p, flow_a, flow_b
-        data_dict[f'{self.prefix}p'] = press_corr
-        data_dict[f'{self.prefix}flow_a'] = flowa_corr
-        data_dict[f'{self.prefix}flow_b'] = flowb_corr
+        data_dict[f'{self.prefix}p'] = round(press_corr, 2)
+        data_dict[f'{self.prefix}flow_a'] = round(flowa_corr, 2)
+        data_dict[f'{self.prefix}flow_b'] = round(flowb_corr, 2)
 
         # add o3best to dict
-        data_dict[f'{self.prefix}o3best'] = o3best
+        data_dict[f'{self.prefix}o3best'] = round(o3best, 2)
         return data_dict
 
     def generate_test_data(self):

@@ -72,7 +72,7 @@ devices:
     sim_mode: false
     data_var_prefix: oz_
     display_vars:
-      - O3best
+      - o3best
       - t
       - p
 
