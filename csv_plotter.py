@@ -35,7 +35,7 @@ class CSVPlotter(QMainWindow):
         self.c_filetext = "dimgrey"
 
         self.setWindowTitle(self.win_name)
-        self.setGeometry(50 + self.offset, 50 + self.offset, 800, 600)
+        self.setGeometry(50 + self.offset, 70 + self.offset, 700, 550)
         self.setStyleSheet(f"font-size: 12px; background-color: {self.c_background};")
 
         self.main_widget = QWidget()
