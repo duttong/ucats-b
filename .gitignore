@@ -3,3 +3,4 @@
 __py*
 shutdown.txt
 *.log
+data/*
