@@ -33,6 +33,7 @@ devices:
       - T_gas
       - T_ambient
       - T_TEC_Sink
+      - blank
       - N2Oc_ppb
       - COc_ppb
 

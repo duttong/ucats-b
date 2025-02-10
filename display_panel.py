@@ -95,11 +95,18 @@ class DisplayPanel(QWidget):
 
             # Add labels for each variable
             for var in device_info['display_vars']:
-                var_label = QLabel(f"   {prefix}{var}: ")
+                if var == 'blank':
+                    var_label = QLabel("")
+                else:
+                    var_label = QLabel(f"   {prefix}{var}: ")
                 var_label.setFont(QFont('Arial', 12))
                 grid.addWidget(var_label, row[colinc], 0+colinc, alignment=Qt.AlignLeft)
 
-                value_label = QLabel("N/A")
+                if var == 'blank':
+                    value_label = QLabel(" ")
+                else:
+                    value_label = QLabel("N/A")
+                
                 value_label.setFont(QFont('Arial', 12))
                 value_label.setStyleSheet("color: #11e;")  # Optional: Blue color for value
                 grid.addWidget(value_label, row[colinc], 1+colinc, alignment=Qt.AlignRight)
