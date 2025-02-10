@@ -51,7 +51,7 @@ class DisplayPanel(QWidget):
     def initUI(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)  # Adjust margins
-        layout.setSpacing(10)  # Spacing between sections
+        layout.setSpacing(5)  # Spacing between sections
 
         self.data_labels = {}  # Store labels to update later
 
@@ -81,12 +81,12 @@ class DisplayPanel(QWidget):
                 continue
 
             colinc = 0
-            if device_name in ["aeris_co", "labjack"]:
+            if device_name in ["aeris_co", "h2o_sensor"]:
                 colinc = 2
 
             # Device label with larger font and bold style
             device_label = QLabel(f"{device_name}")
-            device_label.setFont(QFont('Arial', 16, QFont.Bold))
+            device_label.setFont(QFont('Arial', 14, QFont.Bold))
             device_label.setStyleSheet("color: #2E8B57;")  # Optional: Set color
             grid.addWidget(device_label, row[colinc], colinc, 1, 2)  # Span across 2 columns
             row[colinc] += 1
