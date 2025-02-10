@@ -90,13 +90,13 @@ devices:
       # [intercept, slope, quadratic, etc.]
       AIN0:
         var: 'P_cal1_low'
-        cal: [-22.25, 24.45]
+        cal: [0,1]
       AIN1:
         var: 'P_cal1_hi'
-        cal: [-134, 1027]
+        cal: [0, 1]
       AIN2:
         var: 'P_cal0_low'
-        cal: [-22.25, 24.45]   #[-6.67, 7.33]
+        cal: [0, 1]
       AIN3:
         var: 'P_cal0_hi'
-        cal: [-134, 1027]
+        cal: [0, 1]
