@@ -58,6 +58,7 @@ devices:
       - H2O_lg
       - H2O_CD
       - t
+      - p
 
   Labjack:
     # Labjack control

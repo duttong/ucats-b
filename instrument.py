@@ -174,9 +174,9 @@ class TDL_package(QMainWindow):
                 # Handle pressure updates for the O3 sensor
                 if device_name == "o3_sensor":
                     self.pressure = float(data[0].get(self.pressure_var, float("nan")))
-                    if self.pressure > self.alt_high:
-                        self.alt_high_event.set()
-                        #print(f"Pressure of {self.pressure} mbar indicates descent or taxiing.")
+                    #if self.pressure > self.alt_high:
+                    #    self.alt_high_event.set()
+                    #    #print(f"Pressure of {self.pressure} mbar indicates descent or taxiing.")
                 
                 elif device_name == "labjack":
                     # pilot switch variable name with prefix from config file
