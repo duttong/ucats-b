@@ -352,16 +352,14 @@ class TDL_package(QMainWindow):
     def at_altitude(self):
         print("Plane has reached altitude.")
         self.alt_low_event.clear()
-        self.display_panel.sequence_start()
         self.alt_high_event.set()
+        self.display_panel.sequence_start()
 
     def below_altitude(self):
         print("Plane is descending or taxiing.")
         self.alt_high_event.clear()
         self.alt_low_event.set()
         self.display_panel.sequence_idle()
-        self.display_panel.air()
-        self.display_panel.cal0()
         self.display_panel.pumps_off()
 
     def closeEvent(self, event):

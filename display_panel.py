@@ -365,6 +365,8 @@ class DisplayPanel(QWidget):
     # Add Stop Function to Reset UI and Stop the Sequence
     def sequence_idle(self):
         self.sequence_event.set()  # Signal to stop the sequence
+        self.air()
+        self.cal0()
         self.sequence_button.setChecked(True)
         self.sequence_button.setText("Sequence Idle")
         self.sequence_button.setStyleSheet("background-color: LightGray; color: Black; border: 1px solid #999;")
