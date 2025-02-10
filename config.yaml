@@ -89,14 +89,14 @@ devices:
       # The list of numbers in cal are coefficients for a polynomial.
       # [intercept, slope, quadratic, etc.]
       AIN0:
-        var: 'P_cal1_hi'
-        cal: [0, 1000]
-      AIN1:
         var: 'P_cal1_low'
-        cal: [-20, 34]
+        cal: [-22.25, 24.45]
+      AIN1:
+        var: 'P_cal1_hi'
+        cal: [-134, 1027]
       AIN2:
-        var: 'P_cal0_hi'
-        cal: [0, 1000]
-      AIN3:
         var: 'P_cal0_low'
-        cal: [-20, 34]                        
+        cal: [-22.25, 24.45]   #[-6.67, 7.33]
+      AIN3:
+        var: 'P_cal0_hi'
+        cal: [-134, 1027]

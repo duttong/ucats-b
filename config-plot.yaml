@@ -23,5 +23,5 @@ windows:
     
     win2:
         name: 'Mole Fractions'
-        left_y: ['d1_N2O_ppb', 'd2_N2O_ppb']
-        right_y: ['d1_CO2_ppm']
+        left_y: ['d1_N2Oc_ppb', 'd2_N2Oc_ppb']
+        right_y: ['d1_CO2c_ppm']
