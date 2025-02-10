@@ -283,7 +283,7 @@ class CSVPlotter(QMainWindow):
     def load_csv_data(self, file_path=None):
         if file_path is None:
             csv_files = sorted(
-                Path('.').glob('ucatsb-*.csv'), 
+                Path('./data').glob('ucatsb-*.csv'), 
                 key=lambda x: x.stat().st_mtime, 
                 reverse=True
             )
