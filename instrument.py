@@ -204,7 +204,10 @@ class TDL_package(QMainWindow):
 
         # Filter new data
         if self.last_saved_datetime is not None:
-            full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
+            try:
+                full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
+            except TypeError:
+                full_data = pd.DataFrame()
 
         # Save new data to CSV and send most recent data to telemetry
         if not full_data.empty:
