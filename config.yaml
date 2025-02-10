@@ -45,6 +45,8 @@ devices:
       - o3best
       - t
       - p
+      - flow_a
+      - flow_b
 
   H2O_sensor:
     serial_port: /dev/ttyUSB1
@@ -54,6 +56,8 @@ devices:
       - H2Obest
       - H2O_sh
       - H2O_lg
+      - H2O_CD
+      - t
 
   Labjack:
     # Labjack control
