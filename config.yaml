@@ -1,8 +1,8 @@
 triggers:
-  alt_high: 700       # less than this mbar
-  alt_low: 800        # greater than this mbar
+  alt_high: 500       # less than this mbar
+  alt_low: 700        # greater than this mbar
   air_duration: 300   # time in S for air sampling
-  cal_duration: 20    # time in S for cal sampling
+  cal_duration: 40    # time in S for cal sampling
 
 telemetry:
   enable: true
@@ -20,9 +20,7 @@ devices:
       - T_ambient
       - T_TEC
       - Det_PID
-      - N2O_ppb
       - N2Oc_ppb
-      - CO2_ppm
       - CO2c_ppm
 
   Aeris_CO:
@@ -35,9 +33,7 @@ devices:
       - T_gas
       - T_ambient
       - T_TEC_Sink
-      - N2O_ppb
       - N2Oc_ppb
-      - CO_ppb
       - COc_ppb
 
   O3_sensor:

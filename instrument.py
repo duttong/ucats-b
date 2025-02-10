@@ -119,7 +119,7 @@ class TDL_package(QMainWindow):
         self.initial_states()
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
-        #threading.Thread(target=self.altitude_monitor, daemon=True).start()
+        threading.Thread(target=self.altitude_monitor, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -361,10 +361,10 @@ class TDL_package(QMainWindow):
         print("Plane is descending or taxiing.")
         self.alt_high_event.clear()
         self.alt_low_event.set()
-        # Perform actions during descent or post-landing
-        self.lj_digout('pumps', 0)
-        self.lj_digout('sol_cals', 0)
-        self.lj_digout('sol_aircal', 0)
+        self.display_panel.sequence_idle()
+        self.display_panel.cals()
+        self.display_panel.cal0()
+        self.display_panel.pumps_off()
 
     def closeEvent(self, event):
         print("Application is closing...")
