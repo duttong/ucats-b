@@ -362,7 +362,7 @@ class TDL_package(QMainWindow):
         self.alt_high_event.clear()
         self.alt_low_event.set()
         self.display_panel.sequence_idle()
-        self.display_panel.cals()
+        self.display_panel.air()
         self.display_panel.cal0()
         self.display_panel.pumps_off()
 
