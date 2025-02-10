@@ -67,8 +67,11 @@ devices:
     sim_mode: false
     data_var_prefix: j_     # leave blank for no prefix
     display_vars:
-      - temp1
       - pilot_power
+      - P_cal0_low
+      - P_cal0_hi
+      - P_cal1_low
+      - P_cal1_hi
 
     digouts:
       # variables used in instrument.py
@@ -85,6 +88,15 @@ devices:
       # read once a second
       # The list of numbers in cal are coefficients for a polynomial.
       # [intercept, slope, quadratic, etc.]
-      AIN2:
-        var: 'temp1'
+      AIN0:
+        var: 'P_cal1_hi'
         cal: [0, 1]
+      AIN1:
+        var: 'P_cal1_low'
+        cal: [0, 1]
+      AIN2:
+        var: 'P_cal0_hi'
+        cal: [0, 1]
+      AIN3:
+        var: 'P_cal0_low'
+        cal: [0, 1]                        
