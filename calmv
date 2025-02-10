@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Get current date in YYYYMMDD format
+TODAY=$(date +%Y%m%d)
+
+# Define source and destination directories
+SRC_DIR="data"
+DEST_DIR="data/cals/$TODAY"
+
+# Create the destination directory if it doesn't exist
+mkdir -p "$DEST_DIR"
+
+# Copy all LOG files from source to destination
+cp "$SRC_DIR"/*.log "$DEST_DIR"/ 2>/dev/null
+# Copy all CSV files from source to destination
+cp "$SRC_DIR"/*.csv "$DEST_DIR"/ 2>/dev/null
+
+# Check if any files were copied
+if [[ $? -eq 0 ]]; then
+    echo "CSV files copied to $DEST_DIR"
+    echo "It is safe to run cleanup."
+else
+    echo "No CSV files found in $SRC_DIR"
+fi
