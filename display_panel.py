@@ -51,7 +51,7 @@ class DisplayPanel(QWidget):
     def initUI(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)  # Adjust margins
-        layout.setSpacing(5)  # Spacing between sections
+        layout.setSpacing(12)  # Spacing between sections
 
         self.data_labels = {}  # Store labels to update later
 
@@ -72,7 +72,7 @@ class DisplayPanel(QWidget):
 
         # === Device Grid Layout ===
         grid = QGridLayout()
-        grid.setSpacing(5)  # Adjust spacing between rows
+        grid.setSpacing(10)  # Adjust spacing between rows
 
         row = [0, 0, 0]
         for device_name, device_info in self.config['devices'].items():
@@ -86,7 +86,7 @@ class DisplayPanel(QWidget):
 
             # Device label with larger font and bold style
             device_label = QLabel(f"{device_name}")
-            device_label.setFont(QFont('Arial', 14, QFont.Bold))
+            device_label.setFont(QFont('Arial', 16, QFont.Bold))
             device_label.setStyleSheet("color: #2E8B57;")  # Optional: Set color
             grid.addWidget(device_label, row[colinc], colinc, 1, 2)  # Span across 2 columns
             row[colinc] += 1
@@ -99,7 +99,7 @@ class DisplayPanel(QWidget):
                     var_label = QLabel("")
                 else:
                     var_label = QLabel(f"   {prefix}{var}: ")
-                var_label.setFont(QFont('Arial', 12))
+                var_label.setFont(QFont('Arial', 14))
                 grid.addWidget(var_label, row[colinc], 0+colinc, alignment=Qt.AlignLeft)
 
                 if var == 'blank':
@@ -107,7 +107,7 @@ class DisplayPanel(QWidget):
                 else:
                     value_label = QLabel("N/A")
                 
-                value_label.setFont(QFont('Arial', 12))
+                value_label.setFont(QFont('Arial', 14))
                 value_label.setStyleSheet("color: #11e;")  # Optional: Blue color for value
                 grid.addWidget(value_label, row[colinc], 1+colinc, alignment=Qt.AlignRight)
 
@@ -172,14 +172,14 @@ class DisplayPanel(QWidget):
         """ uses datetime in the data packet """
         packet_time = data['datetime'].strftime("%Y-%m-%d %H:%M:%S")
         self.time_label.setText(f"{packet_time}")
-        self.time_label.setFont(QFont('Arial', 18, QFont.Bold))  # Bold current time display
+        self.time_label.setFont(QFont('Arial', 20, QFont.Bold))  # Bold current time display
         self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
 
     def update_time_clocktime(self):
         """ uses the Pi clock time """
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.time_label.setText(f"{current_time}")
-        self.time_label.setFont(QFont('Arial', 18, QFont.Bold))  # Bold current time display
+        self.time_label.setFont(QFont('Arial', 20, QFont.Bold))  # Bold current time display
         self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
 
     def update_display_data(self, device_name, data):
