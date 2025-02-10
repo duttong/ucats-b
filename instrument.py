@@ -140,7 +140,9 @@ class TDL_package(QMainWindow):
         # Get the current date and hour
         current_time = datetime.now()
         # Format the filename as "{prefix}-YYYYMMDDHH.csv"
-        filename = f"{prefix}-{current_time.strftime('%Y%m%d%H')}.csv"
+        filename = f"data/{prefix}-{current_time.strftime('%Y%m%d%H')}.csv"
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         return filename
 
     def start_collection(self, run_duration=None):
