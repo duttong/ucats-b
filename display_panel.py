@@ -127,30 +127,30 @@ class DisplayPanel(QWidget):
         layout.addWidget(self.sequence_button)
 
         sol_layout = QHBoxLayout()
-        self.sol1 = QPushButton("Sol: Cal0/Cal1")
+        self.sol1 = QPushButton("Cal0/Cal1")
         self.sol1.setCheckable(True)
         self.sol1.clicked.connect(self.sol_cals)
         self.sol1.setStyleSheet(
             f"background-color: #FF9999; color: black; border: 1px solid #CC9999;{self.button_font}")
 
-        self.sol2 = QPushButton("Sol: Air/Cal")
+        self.sol2 = QPushButton("Air/Cal")
         self.sol2.setCheckable(True)
         self.sol2.clicked.connect(self.sol_aircal)
         self.sol2.setStyleSheet(
             f"background-color: #FF9999; color: black; border: 1px solid #CC9999; {self.button_font}")
-
-        sol_layout.addWidget(self.sol1)
-        sol_layout.addWidget(self.sol2)
-        layout.addLayout(sol_layout)
 
         self.pumps_tog = QPushButton("Pumps Off")
         self.pumps_tog.setCheckable(True)
         self.pumps_tog.clicked.connect(self.pumps_onoff)
         self.pumps_tog.setStyleSheet(
             f"background-color: #FF9999; color: black; border: 1px solid #CC9999; {self.button_font}")
-        layout.addWidget(self.pumps_tog)
 
-        aeris_layout = QHBoxLayout()
+        sol_layout.addWidget(self.pumps_tog)
+        sol_layout.addWidget(self.sol1)
+        sol_layout.addWidget(self.sol2)
+        layout.addLayout(sol_layout)
+
+        cmd_layout = QHBoxLayout()
         self.co2_reboot_button = QPushButton("Aeris CO2 cmd")
         self.co2_reboot_button.clicked.connect(self.show_co2_options)
         self.co2_reboot_button.setStyleSheet(
@@ -162,16 +162,17 @@ class DisplayPanel(QWidget):
         self.co_reboot_button.setStyleSheet(
             f"background-color: #FFCCCC; color: black; border: 1px solid #CC9999; {self.button_font}"
         )
-        aeris_layout.addWidget(self.co2_reboot_button)
-        aeris_layout.addWidget(self.co_reboot_button)
-        layout.addLayout(aeris_layout)
-        
+
         # Shutdown Button
         self.shutdown_trigger = QPushButton("SHUTDOWN")
         self.shutdown_trigger.clicked.connect(self.shutdown_menu)
         self.shutdown_trigger.setStyleSheet(
             f"background-color: DarkRed; color: white; border: 1px solid #CC9999; {self.button_font}")
-        layout.addWidget(self.shutdown_trigger)
+
+        cmd_layout.addWidget(self.co2_reboot_button)
+        cmd_layout.addWidget(self.co_reboot_button)
+        cmd_layout.addWidget(self.shutdown_trigger)
+        layout.addLayout(cmd_layout)
 
         self.setLayout(layout)
 
