@@ -337,16 +337,28 @@ class TDL_package(QMainWindow):
 
     # pressure checks
     def altitude_monitor(self):
-        time.sleep(5)   # wait a little to let everything startup
+        time.sleep(5)  # wait a little to let everything startup
+        
+        alt_high_count = 0
+        alt_low_count = 0
+
         while True:
             if self.pressure <= self.alt_high:  # Takeoff or ascending condition
-                if not self.alt_high_event.is_set():
+                alt_high_count += 1
+                alt_low_count = 0  # Reset counter for the opposite condition
+                if alt_high_count >= 3 and not self.alt_high_event.is_set():
                     self.at_altitude()
-            
+            else:
+                alt_high_count = 0  # Reset counter if the condition is not met
+
             if self.pressure > self.alt_low:  # Landing or descending condition
-                if not self.alt_low_event.is_set():
+                alt_low_count += 1
+                alt_high_count = 0  # Reset counter for the opposite condition
+                if alt_low_count >= 3 and not self.alt_low_event.is_set():
                     self.below_altitude()
-            
+            else:
+                alt_low_count = 0  # Reset counter if the condition is not met
+
             time.sleep(2)  # Polling interval
 
     def at_altitude(self):
