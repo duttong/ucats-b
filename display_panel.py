@@ -6,7 +6,7 @@ import datetime
 import subprocess
 import threading
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
-from PyQt5.QtGui import QFont, QColor, QPalette
+from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 
 class PilotIndicator(QLabel):
@@ -19,10 +19,8 @@ class PilotIndicator(QLabel):
         self.update_indicator(0)  # Default to yellow
 
     def update_indicator(self, value):
-        color = QColor("yellow") if value == 0 else QColor("LightSkyBlue")
-        palette = self.palette()
-        palette.setColor(QPalette.Window, color)
-        self.setPalette(palette)
+        color = "yellow" if value == 0 else "LightSkyBlue"
+        self.setStyleSheet(f"background-color: {color}; border: 1px solid black;")
 
 class DisplayPanel(QWidget):
     def __init__(self, config_file, devices=None):
