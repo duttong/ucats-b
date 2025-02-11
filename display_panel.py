@@ -30,6 +30,7 @@ class DisplayPanel(QWidget):
         self.devices = devices
         self.sequence_event = threading.Event()
         self.button_font = "font-size: 16px;"
+        self.start_time = datetime.datetime.now()
         self.initUI()
 
     def load_config(self, file_path='config.yaml'):
@@ -183,12 +184,26 @@ class DisplayPanel(QWidget):
         self.time_label.setFont(QFont('Arial', 20, QFont.Bold))  # Bold current time display
         self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
 
+    import datetime
+
     def update_time_clocktime(self):
-        """ uses the Pi clock time """
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.time_label.setText(f"{current_time}")
-        self.time_label.setFont(QFont('Arial', 20, QFont.Bold))  # Bold current time display
-        self.time_label.setStyleSheet("color: #000000;")  # Black color for current time
+        """Uses the Pi clock time and shows elapsed time since the program started with a smaller font."""
+        current_time = datetime.datetime.now()
+        formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Calculate elapsed time
+        elapsed_time = current_time - self.start_time
+        elapsed_str = str(elapsed_time).split(".")[0]  # Remove microseconds
+
+        # Use HTML formatting for different font sizes
+        display_text = (
+            f"<span style='font-size: 20px; font-weight: bold; color: #000000;'>"
+            f"Current Time: {formatted_time}</span><br>"
+            f"<span style='font-size: 16px; color: #000000;'>Elapsed Time: {elapsed_str}</span>"
+        )
+
+        # Update label with formatted text
+        self.time_label.setText(display_text)
 
     def update_display_data(self, device_name, data):
         """ Update the display with new data for a given device. """
