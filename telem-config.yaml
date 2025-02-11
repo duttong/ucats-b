@@ -1,8 +1,8 @@
 # data variables and IP info for the MTS system
 mts:
   iwg_prefix: UCB
-  ip: 10.11.96.10   # for lab tests
-  # ip: 10.11.96.1    # for flight
+  ip: 10.11.96.10       # for lab tests
+  # ip: 10.11.96.131    # for flight
   port: 7075
   rate: 1
   variables:
