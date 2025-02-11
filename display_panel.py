@@ -31,6 +31,7 @@ class DisplayPanel(QWidget):
         self.config = self.load_config(config_file)
         self.devices = devices
         self.sequence_event = threading.Event()
+        self.button_font = "font-size: 16px;"
         self.initUI()
 
     def load_config(self, file_path='config.yaml'):
@@ -74,15 +75,18 @@ class DisplayPanel(QWidget):
         grid = QGridLayout()
         grid.setSpacing(10)  # Adjust spacing between rows
 
-        row = [0, 0, 0]
+        row = [0, 0, 0, 0, 0]
         for device_name, device_info in self.config['devices'].items():
             device_name = device_name.lower()
             if not device_info.get('display_vars'):
                 continue
 
+            # set the columns in the display where the device is shown
             colinc = 0
             if device_name in ["aeris_co", "h2o_sensor"]:
                 colinc = 2
+            elif device_name in ["labjack"]:
+                colinc = 4
 
             # Device label with larger font and bold style
             device_label = QLabel(f"{device_name}")
@@ -119,6 +123,7 @@ class DisplayPanel(QWidget):
 
         # === Buttons Section ===
         self.sequence_button = QPushButton("Idle")
+        self.sequence_button.setStyleSheet(f'{self.button_font}')
         self.sequence_button.setCheckable(True)
         self.sequence_button.clicked.connect(self.sequence_run)
         layout.addWidget(self.sequence_button)
@@ -127,12 +132,14 @@ class DisplayPanel(QWidget):
         self.sol1 = QPushButton("Sol: Cal0/Cal1")
         self.sol1.setCheckable(True)
         self.sol1.clicked.connect(self.sol_cals)
-        self.sol1.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")
+        self.sol1.setStyleSheet(
+            f"background-color: #FF9999; color: black; border: 1px solid #CC9999;{self.button_font}")
 
         self.sol2 = QPushButton("Sol: Air/Cal")
         self.sol2.setCheckable(True)
         self.sol2.clicked.connect(self.sol_aircal)
-        self.sol2.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")
+        self.sol2.setStyleSheet(
+            f"background-color: #FF9999; color: black; border: 1px solid #CC9999; {self.button_font}")
 
         sol_layout.addWidget(self.sol1)
         sol_layout.addWidget(self.sol2)
@@ -141,20 +148,21 @@ class DisplayPanel(QWidget):
         self.pumps_tog = QPushButton("Pumps Off")
         self.pumps_tog.setCheckable(True)
         self.pumps_tog.clicked.connect(self.pumps_onoff)
-        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")
+        self.pumps_tog.setStyleSheet(
+            f"background-color: #FF9999; color: black; border: 1px solid #CC9999; {self.button_font}")
         layout.addWidget(self.pumps_tog)
 
         aeris_layout = QHBoxLayout()
         self.co2_reboot_button = QPushButton("Aeris CO2 cmd")
         self.co2_reboot_button.clicked.connect(self.show_co2_options)
         self.co2_reboot_button.setStyleSheet(
-            "background-color: #FFCCCC; color: black; border: 1px solid #CC9999;"
+            f"background-color: #FFCCCC; color: black; border: 1px solid #CC9999; {self.button_font}"
         )
         
         self.co_reboot_button = QPushButton("Aeris CO cmd")
         self.co_reboot_button.clicked.connect(self.show_co_options)
         self.co_reboot_button.setStyleSheet(
-            "background-color: #FFCCCC; color: black; border: 1px solid #CC9999;"
+            f"background-color: #FFCCCC; color: black; border: 1px solid #CC9999; {self.button_font}"
         )
         aeris_layout.addWidget(self.co2_reboot_button)
         aeris_layout.addWidget(self.co_reboot_button)
@@ -163,7 +171,8 @@ class DisplayPanel(QWidget):
         # Shutdown Button
         self.shutdown_trigger = QPushButton("SHUTDOWN")
         self.shutdown_trigger.clicked.connect(self.shutdown_menu)
-        self.shutdown_trigger.setStyleSheet("background-color: DarkRed; color: white; border: 1px solid #CC9999;")
+        self.shutdown_trigger.setStyleSheet(
+            f"background-color: DarkRed; color: white; border: 1px solid #CC9999; {self.button_font}")
         layout.addWidget(self.shutdown_trigger)
 
         self.setLayout(layout)
@@ -252,14 +261,16 @@ class DisplayPanel(QWidget):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
         self.pumps_tog.setText("Pumps On")
-        self.pumps_tog.setStyleSheet("background-color: #99FF99; color: black; border: 1px solid #CC9999;")  
+        self.pumps_tog.setStyleSheet(
+            f"background-color: #99FF99; color: black; border: 1px solid #CC9999; {self.button_font}")  
         jack.write_digital({dig: 1})
     
     def pumps_off(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
         self.pumps_tog.setText("Pumps Off")
-        self.pumps_tog.setStyleSheet("background-color: #FF9999; color: black; border: 1px solid #CC9999;")  
+        self.pumps_tog.setStyleSheet(
+            f"background-color: #FF9999; color: black; border: 1px solid #CC9999; {self.button_font}")  
         jack.write_digital({dig: 0})
 
     def sol_cals(self):
@@ -273,7 +284,8 @@ class DisplayPanel(QWidget):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('sol_cals')
         self.sol1.setText("Cal 0")
-        self.sol1.setStyleSheet("background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999;")  
+        self.sol1.setStyleSheet(
+            f"background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999; {self.button_font}")  
         self.sol1.setChecked(False)
         jack.write_digital({dig: 0})
 
@@ -281,7 +293,8 @@ class DisplayPanel(QWidget):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('sol_cals')
         self.sol1.setText("Cal 1")
-        self.sol1.setStyleSheet("background-color: DodgerBlue; color: White; border: 1px solid #CC9999;")  
+        self.sol1.setStyleSheet(
+            f"background-color: DodgerBlue; color: White; border: 1px solid #CC9999; {self.button_font}")  
         self.sol1.setChecked(True)
         jack.write_digital({dig: 1})
 
@@ -289,7 +302,8 @@ class DisplayPanel(QWidget):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('sol_aircal')
         self.sol2.setText("Cal")
-        self.sol2.setStyleSheet("background-color: DodgerBlue; color: White; border: 1px solid #CC9999;")  
+        self.sol2.setStyleSheet(
+            f"background-color: DodgerBlue; color: White; border: 1px solid #CC9999; {self.button_font}")  
         self.sol2.setChecked(False)
         jack.write_digital({dig: 1})
 
@@ -297,7 +311,8 @@ class DisplayPanel(QWidget):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('sol_aircal')
         self.sol2.setText("Air")
-        self.sol2.setStyleSheet("background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999;")  
+        self.sol2.setStyleSheet(
+            f"background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999; {self.button_font}")  
         self.sol2.setChecked(True)
         jack.write_digital({dig: 0})
 
@@ -307,7 +322,8 @@ class DisplayPanel(QWidget):
     def sequence_start(self):
         self.sequence_event.clear()  # Prepare to start the sequence
         self.sequence_button.setChecked(False)
-        self.sequence_button.setStyleSheet("background-color: DarkSeaGreen; color: Black; border: 1px solid #CC9999;")  
+        self.sequence_button.setStyleSheet(
+            f"background-color: DarkSeaGreen; color: Black; border: 1px solid #CC9999; {self.button_font}")  
         
         air_s = float(self.config['triggers'].get('air_duration', 300))  # default 300
         cal_s = float(self.config['triggers'].get('cal_duration', 20))   # default 20
@@ -361,7 +377,6 @@ class DisplayPanel(QWidget):
             if countdown(air_s, "Air"):
                 break
 
-
     # Add Stop Function to Reset UI and Stop the Sequence
     def sequence_idle(self):
         self.sequence_event.set()  # Signal to stop the sequence
@@ -369,7 +384,8 @@ class DisplayPanel(QWidget):
         self.cal0()
         self.sequence_button.setChecked(True)
         self.sequence_button.setText("Sequence Idle")
-        self.sequence_button.setStyleSheet("background-color: LightGray; color: Black; border: 1px solid #999;")
+        self.sequence_button.setStyleSheet(
+            f"background-color: LightGray; color: Black; border: 1px solid #999; {self.button_font}")
         QApplication.processEvents()  # Refresh UI
 
     def shutdown_menu(self, sensor_type):

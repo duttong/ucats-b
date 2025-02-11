@@ -353,7 +353,9 @@ class TDL_package(QMainWindow):
         print("Plane has reached altitude.")
         self.alt_low_event.clear()
         self.alt_high_event.set()
-        self.display_panel.sequence_start()
+        # Start sequence_start in a new thread to avoid blocking
+        sequence_thread = threading.Thread(target=self.display_panel.sequence_start, daemon=True)
+        sequence_thread.start()
 
     def below_altitude(self):
         print("Plane is descending or taxiing.")
