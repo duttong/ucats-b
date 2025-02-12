@@ -199,7 +199,7 @@ class DisplayPanel(QWidget):
         display_text = (
             f"<span style='font-size: 20px; font-weight: bold; color: #000000;'>"
             f"Current Time: {formatted_time}</span><br>"
-            f"<span style='font-size: 16px; color: #000000;'>Elapsed Time: {elapsed_str}</span>"
+            f"<span style='font-size: 18px; color: #000000;'>Elapsed Time: {elapsed_str}</span>"
         )
 
         # Update label with formatted text
