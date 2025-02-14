@@ -1,8 +1,8 @@
 # data variables and IP info for the MTS system
 mts:
   iwg_prefix: UCB
-  ip: 10.11.96.10       # for lab tests
-  # ip: 10.11.96.131    # for flight
+  # ip: 10.11.96.10       # for lab tests
+  ip: 10.11.96.131    # for flight
   port: 7075
   rate: 1
   variables:
@@ -21,9 +21,9 @@ mts:
 data:
   iwg_prefix: UCBdata
   # list of ip address to send engineering data too.
-  ip: [10.11.96.10, 10.11.96.11]    # for lab tests
+  # ip: [10.11.96.10, 10.11.96.11]    # for lab tests
   # for flight ..101. for Ellington use ..102. for elsewhere
-  # ip: [10.16.101.145, 10.16.101.146, 10.16.101.147, 10.16.101.148]
+  ip: [10.16.101.145, 10.16.101.146, 10.16.101.147, 10.16.101.148]
   port: 50555
   rate: 1   # frequency to send in seconds
   variables:
