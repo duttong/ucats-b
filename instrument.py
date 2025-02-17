@@ -193,7 +193,7 @@ class TDL_package(QMainWindow):
                 try:
                     full_data = pd.merge(full_data, stream, on='datetime', how='outer')
                 except KeyError:
-                    # no read or missing data
+                    # No read or missing data
                     pass
 
         if full_data is not None:
@@ -201,18 +201,10 @@ class TDL_package(QMainWindow):
             full_data = pd.DataFrame(full_data).reindex(columns=self.all_variables)
             full_data = full_data[:-len(self.streams)]
 
-        # Filter new data
-        if self.last_saved_datetime is not None:
-            try:
-                full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
-            except TypeError:
-                full_data = pd.DataFrame()
-
-        # Save new data to CSV and send most recent data to telemetry
-        if not full_data.empty:
-            full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
-            self.last_saved_datetime = full_data['datetime'].max()
-            self.telemetry.send_data(full_data)
+            if not full_data.empty:
+                # Save new data to CSV and send most recent data to telemetry
+                full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
+                self.telemetry.send_data(full_data)
 
         # Limit the memory footprint for each stream
         for stream_name in self.streams.keys():
