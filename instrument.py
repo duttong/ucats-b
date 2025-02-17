@@ -194,7 +194,7 @@ class TDL_package(QMainWindow):
                     full_data = pd.merge(full_data, stream, on='datetime', how='outer')
                 except KeyError:
                     # No read or missing data
-                    pass
+                    full_data = None
 
         if full_data is not None:
             # Remove the last N rows
@@ -203,8 +203,9 @@ class TDL_package(QMainWindow):
 
             if not full_data.empty:
                 # Save new data to CSV and send most recent data to telemetry
-                full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
-                self.telemetry.send_data(full_data)
+                lastline = full_data.tail(1)
+                lastline.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
+                self.telemetry.send_data(lastline)
 
         # Limit the memory footprint for each stream
         for stream_name in self.streams.keys():
