@@ -119,7 +119,7 @@ class TDL_package(QMainWindow):
         self.initial_states()
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
-        threading.Thread(target=self.altitude_monitor, daemon=True).start()
+        # threading.Thread(target=self.altitude_monitor, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """

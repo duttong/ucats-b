@@ -48,6 +48,11 @@ data:
     - d2_T_ambient
     - d2_T_TEC_Sink
 
+    - j_P_cal0_low
+    - j_P_cal0_hi
+    - j_P_cal1_low
+    - j_P_cal1_hi
+
     - oz_o3
     - oz_o3best
     - oz_t
