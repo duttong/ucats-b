@@ -119,7 +119,7 @@ class TDL_package(QMainWindow):
         self.initial_states()
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
         threading.Thread(target=self.pilot_off_switch, daemon=True).start()
-        threading.Thread(target=self.altitude_monitor, daemon=True).start()
+        # threading.Thread(target=self.altitude_monitor, daemon=True).start()
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -193,26 +193,19 @@ class TDL_package(QMainWindow):
                 try:
                     full_data = pd.merge(full_data, stream, on='datetime', how='outer')
                 except KeyError:
-                    # no read or missing data
-                    pass
+                    # No read or missing data
+                    full_data = None
 
         if full_data is not None:
             # Remove the last N rows
             full_data = pd.DataFrame(full_data).reindex(columns=self.all_variables)
             full_data = full_data[:-len(self.streams)]
 
-        # Filter new data
-        if self.last_saved_datetime is not None:
-            try:
-                full_data = full_data[full_data['datetime'] > self.last_saved_datetime]
-            except TypeError:
-                full_data = pd.DataFrame()
-
-        # Save new data to CSV and send most recent data to telemetry
-        if not full_data.empty:
-            full_data.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
-            self.last_saved_datetime = full_data['datetime'].max()
-            self.telemetry.send_data(full_data)
+            if not full_data.empty:
+                # Save new data to CSV and send most recent data to telemetry
+                lastline = full_data.tail(1)
+                lastline.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
+                self.telemetry.send_data(lastline)
 
         # Limit the memory footprint for each stream
         for stream_name in self.streams.keys():
