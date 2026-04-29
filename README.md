@@ -55,6 +55,14 @@ Data is written to `data/ucatsb-YYYYMMDDHH.csv`, one file per hour. After a flig
 ./cleanup     # delete data/ucatsb*.csv and data/*.log (run only after the above)
 ```
 
+### Logs and diagnostics
+
+When started from the desktop launcher, stdout is captured to `data/ucats-b.log`. After a flight, useful greps:
+
+- `[Telemetry Error]` — UDP send failures (unreachable MTS / ground IP)
+- `Fail Light:` — pilot-fail watchdog state transitions
+- `Plane has reached altitude.` / `Plane is descending or taxiing.` — altitude-trigger events
+
 ## Configuration
 
 - [config.yaml](config.yaml) — devices, serial ports, prefixes, display variables; LabJack DIO/AIN mappings; altitude/sequence thresholds.

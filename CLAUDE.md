@@ -31,7 +31,7 @@ Each device class (`Aeris` in [aeris.py](aeris.py), `O3_2Btech` in [o3_sensor.py
 - `get_all_data()` drains the buffer and returns a list of dict rows
 - `variables` lists the column names the device produces
 
-Each tick `collect_data` drains every device, concatenates rows into `self.streams[device_name]` (a per-device DataFrame), merges all streams on `datetime` (outer join), and appends only the *last* completed row to `data/ucatsb-YYYYMMDDHH.csv`. The same row is fanned out to UDP via `Telemetry.send_data` (which spawns a thread per send). Hourly file rotation is implicit in `create_filename()`'s `%Y%m%d%H` pattern.
+Each tick `collect_data` drains every device, concatenates rows into `self.streams[device_name]` (a per-device DataFrame), merges all streams on `datetime` (outer join), and appends only the *last* completed row to `data/ucatsb-YYYYMMDDHH.csv`. The same row is fanned out to UDP via `Telemetry.send_data`, which sends synchronously on the GUI thread (UDP `sendto` is fast enough that this doesn't perceptibly affect the 950 ms tick). Hourly file rotation is implicit in `create_filename()`'s `%Y%m%d%H` pattern.
 
 ### Variable prefixing
 
