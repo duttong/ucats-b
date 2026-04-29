@@ -91,6 +91,9 @@ class Aeris:
 
     def start_data_collection(self):
         """Start a background thread to collect data or simulate test data."""
+        if self.is_collecting:
+            logger.info("Aeris data collection is already running.")
+            return
         if not self.sim_mode and (not self.ser or not self.ser.is_open):
             logger.warning("Aeris device not connected. Call connect() first.")
             return
@@ -146,16 +149,13 @@ class Aeris:
                 if self.running:
                     self.ser.write(command.encode())
                     response = self.ser.readline().decode().strip()
-                    self.command_response = response  # Store response
                     logger.debug(f"Sent: {command}, Received: {response}")
                 else:
                     response = 'Aeris offline'
                 return response
         else:
-            # Simulate response
             simulated_response = f"Simulated response to {command}"
             logger.debug(f"Sent (simulated): {command}, Received: {simulated_response}")
-            self.command_response = simulated_response
             return simulated_response
 
     def stop_data_collection(self):
@@ -221,8 +221,8 @@ class Aeris:
                     parsed_data[key] = round(float(parsed_data[key]), 2)  # Round pressure values
                 elif "Power" in key:
                     parsed_data[key] = round(float(parsed_data[key]), 2)  # Round power values
-            except ValueError:
-                raise ValueError(f"Cannot convert value of '{key}' to float: {parsed_data[key]}")
+            except ValueError as e:
+                raise ValueError(f"Cannot convert value of '{key}' to float: {parsed_data[key]}") from e
                             
         # Drop items that contain "Unused" in the key
         parsed_data = {key: value for key, value in parsed_data.items() if "Unused" not in key}
@@ -321,7 +321,6 @@ if __name__ == "__main__":
     analyzer.start_data_collection()
 
     # If in test mode, wait until the specified number of packets is collected
-    count = 0
     try:
         if args.test:
             time.sleep(args.test * 1)  # Assuming one packet every 1 second
@@ -334,7 +333,7 @@ if __name__ == "__main__":
     
     # Retrieve and print all collected data
     data = analyzer.get_all_data()
-    if not  args.verbose:
+    if not args.verbose:
         print(data)
     
     # Stop data collection and disconnect
