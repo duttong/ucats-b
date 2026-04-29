@@ -1,4 +1,3 @@
-import os
 import sys
 import time
 import logging
@@ -414,18 +413,14 @@ class DisplayPanel(QWidget):
             self.shutdown()
 
     def shutdown(self):
-        log_file = "data/shutdown.log"
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(log_file, "a") as file:
-            file.write(f"{current_time} - Shutdown initiated\n")
+        logger.info("Shutdown initiated")
 
         # tell aeris instruments to shutdown
         self.aeris_command('aeris_co2', 'shutdown')
         self.aeris_command('aeris_co', 'shutdown')
         time.sleep(0.1)
+        # Flush all log handlers before the OS halts
+        logging.shutdown()
         # shutdown Raspberry Pi
         subprocess.run(["sudo", "shutdown", "-h", "now"])
 
