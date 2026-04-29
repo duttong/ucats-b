@@ -57,11 +57,24 @@ Data is written to `data/ucatsb-YYYYMMDDHH.csv`, one file per hour. After a flig
 
 ### Logs and diagnostics
 
-When started from the desktop launcher, stdout is captured to `data/ucats-b.log`. After a flight, useful greps:
+`instrument.py` writes timestamped logs to `data/ucats-b.log` via Python's `logging` module (rotates at 20 MB, keeps 5 backups → `ucats-b.log.1`, `ucats-b.log.2`, …). Lines look like:
 
-- `[Telemetry Error]` — UDP send failures (unreachable MTS / ground IP)
+```
+2026-04-29 14:23:45,123 [INFO] aeris: Connected to Aeris device on port /dev/ttyUSB0
+2026-04-29 14:23:46,500 [WARNING] __main__: Fail Light: ON
+2026-04-29 14:23:47,200 [ERROR] telemetry: [Telemetry Error] data sendto 10.16.101.145:50555 failed: ...
+```
+
+Useful greps after a flight:
+
+- `\[ERROR\]` / `\[WARNING\]` — anything other than informational events
 - `Fail Light:` — pilot-fail watchdog state transitions
 - `Plane has reached altitude.` / `Plane is descending or taxiing.` — altitude-trigger events
+- `aeris:` / `lj:` / `o3_sensor:` / `h2o_sensor:` / `telemetry:` — narrow to one module
+
+Run with `-v` (`python instrument.py -v`) to enable `DEBUG` level — emits per-tick raw packets from each driver. Don't use `-v` in flight; it floods the log.
+
+Logs are archived alongside CSVs by `flightmv` / `calmv` (the glob covers rotated files too) and removed by `cleanup`.
 
 ## Configuration
 

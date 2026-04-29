@@ -1,6 +1,9 @@
+import logging
 import pandas as pd
 import yaml
 import socket
+
+logger = logging.getLogger(__name__)
 
 
 class Telemetry:
@@ -47,8 +50,8 @@ class Telemetry:
                 timestamp_str=timestamp_str,
                 label="data",
             )
-        except Exception as e:
-            print(f"[Telemetry Error] {e}")
+        except Exception:
+            logger.exception("[Telemetry Error] send_data failed")
 
     def _send(self, ips, port, variables, prefix, df, timestamp_str, label):
         if not ips:
@@ -60,4 +63,4 @@ class Telemetry:
             try:
                 self.sock.sendto(message, (ip, port))
             except OSError as e:
-                print(f"[Telemetry Error] {label} sendto {ip}:{port} failed: {e}")
+                logger.error(f"[Telemetry Error] {label} sendto {ip}:{port} failed: {e}")

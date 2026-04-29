@@ -1,4 +1,4 @@
 #! /bin/bash
-rm data/ucatsb*.csv data/*.log
+rm data/ucatsb*.csv data/*.log*
 
 echo "All CSV and LOG files from data directory removed."

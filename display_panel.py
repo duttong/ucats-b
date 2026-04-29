@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import logging
 import yaml
 import datetime
 import subprocess
@@ -8,6 +9,8 @@ import threading
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, QTimer
+
+logger = logging.getLogger(__name__)
 
 class PilotIndicator(QLabel):
     """ Pilot fail light indecator. This will flash between yellow and blue
@@ -265,13 +268,13 @@ class DisplayPanel(QWidget):
         try:
             aeris_device = self.devices.get(device_name)
         except AttributeError:
-            print("This is a display demo, there are no active devices.")
+            logger.info("This is a display demo, there are no active devices.")
             return
         if aeris_device:
             aeris_device.send_command(command)
-            print(f"Aeris {device_name} {command} command sent!")
+            logger.info(f"Aeris {device_name} {command} command sent!")
         else:
-            print(f"Aeris {device_name} device not found!")
+            logger.warning(f"Aeris {device_name} device not found!")
 
     def pumps_onoff(self):
         self.pumps_on() if self.pumps_tog.isChecked() else self.pumps_off()

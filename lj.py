@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import argparse
+import logging
 import time
 from datetime import datetime
 import numpy as np
@@ -8,6 +9,8 @@ import yaml
 import threading
 import random
 from labjack import ljm
+
+logger = logging.getLogger(__name__)
 
 
 class LabJackController:
@@ -87,7 +90,7 @@ class LabJackController:
 
     def initialize_labjack(self):
         if self.sim_mode:
-            print("Simulating Labjack communications.")
+            logger.info("Simulating Labjack communications.")
             return None  # Returning None in simulation mode
 
         attempt = 0
@@ -96,15 +99,15 @@ class LabJackController:
         while attempt < max_attempts:
             try:
                 self.handle = ljm.openS("T4", "ANY", "ANY")  # Replace "T4" with the specific model, if needed.
-                print(f"LabJack initialized successfully on attempt {attempt + 1} with handle: {self.handle}")
+                logger.info(f"LabJack initialized successfully on attempt {attempt + 1} with handle: {self.handle}")
                 self.initialize_digital_lines()
                 return self.handle
-            except Exception as e:  # Properly catching exceptions
-                print(f"Labjack connection failed (attempt {attempt + 1}/{max_attempts}): {e}")
+            except Exception as e:
+                logger.warning(f"Labjack connection failed (attempt {attempt + 1}/{max_attempts}): {e}")
                 attempt += 1
                 time.sleep(1)  # Wait 1 second before retrying
 
-        print("Failed to initialize LabJack after multiple attempts.")
+        logger.error("Failed to initialize LabJack after multiple attempts.")
         return None  # Return None if all attempts fail
 
     def initialize_digital_lines(self):
@@ -143,7 +146,7 @@ class LabJackController:
                 if isinstance(cal, list) and all(isinstance(c, (int, float)) for c in cal):
                     value = np.polyval(cal[::-1], value)  # Reverse cal to use with np.polyval
                 else:
-                    print(f"Invalid calibration for channel {channel}: {cal}. Skipping calibration.")
+                    logger.warning(f"Invalid calibration for channel {channel}: {cal}. Skipping calibration.")
             analog_readings[var] = round(value, 3)
         return analog_readings
 
@@ -192,10 +195,9 @@ class LabJackController:
                     digital_readings = self.read_digital()
                     data = current_datetime | analog_readings | digital_readings | self.digout_states
                     self.data_buffer.append(data)
-                    if self.verbose:
-                        print(data)
-            except Exception as e:
-                print(f"Error during data collection in lj.py: {e}")
+                    logger.debug(data)
+            except Exception:
+                logger.exception("Error during data collection in lj.py")
             time.sleep(self.freq)
 
     def _simulate_test_data(self):
@@ -207,14 +209,13 @@ class LabJackController:
             analog = {f'{self.prefix}pump_speed': pumpspeed, f'{self.prefix}temp1': t}
             data = current_datetime | analog
             self.data_buffer.append(data)
-            if self.verbose:
-                print(data)
+            logger.debug(data)
             time.sleep(1.0)
 
     def start_data_collection(self):
         """Start data collection in a separate thread."""
         if self.is_collecting:
-            print("Data collection is already running.")
+            logger.info("Data collection is already running.")
             return
 
         self.is_collecting = True
@@ -242,10 +243,10 @@ class LabJackController:
     def disconnect(self):
         self.stop_data_collection()
         if self.sim_mode:
-            print("Labjack simulation stopped.")
+            logger.info("Labjack simulation stopped.")
         else:
             ljm.close(self.handle)
-            print("LabJack connection closed.")
+            logger.info("LabJack connection closed.")
 
     def toggle_digital(self, line):
         """Toggle a digital line high for one second, then low."""
@@ -277,6 +278,10 @@ def main():
     parser.add_argument("--high", type=str, help="Sets a digital line high/on.")
     parser.add_argument("--low", type=str, help="Sets a digital line low/off.")
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 
     jack = LabJackController(args.config, verbose=args.verbose)
 

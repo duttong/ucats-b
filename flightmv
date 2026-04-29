@@ -11,7 +11,7 @@ DEST_DIR="data/flights/$TODAY"
 mkdir -p "$DEST_DIR"
 
 # Copy all LOG files from source to destination
-cp "$SRC_DIR"/*.log "$DEST_DIR"/ 2>/dev/null
+cp "$SRC_DIR"/*.log* "$DEST_DIR"/ 2>/dev/null
 # Copy all CSV files from source to destination
 cp "$SRC_DIR"/*.csv "$DEST_DIR"/ 2>/dev/null
 

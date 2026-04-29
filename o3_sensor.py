@@ -1,11 +1,14 @@
 #! /usr/bin/env python
 
+import logging
 import serial
 import threading
 import time
 from datetime import datetime
 import argparse
 import random
+
+logger = logging.getLogger(__name__)
 
 class O3_2Btech:
 
@@ -43,7 +46,7 @@ class O3_2Btech:
     def connect(self):
         """Establish the serial connection to the 2Btech ozone analyzer or enter test mode."""
         if self.sim_mode:
-            print("2Btech Ozone sensor running in simulate mode.")
+            logger.info("2Btech Ozone sensor running in simulate mode.")
         else:
             try:
                 self.ser = serial.Serial(
@@ -54,25 +57,25 @@ class O3_2Btech:
                     bytesize=serial.EIGHTBITS,
                     timeout=self.timeout
                 )
-                print(f"Connected to 2Btech device on port {self.port}")
+                logger.info(f"Connected to 2Btech device on port {self.port}")
             except serial.SerialException as e:
-                print(f"Error connecting to device: {e}")
+                logger.error(f"Error connecting to 2Btech device on {self.port}: {e}")
                 self.ser = None
 
     def disconnect(self):
         """Close the serial connection."""
         if self.sim_mode:
-            print("O3 Test mode ended.")
+            logger.info("O3 Test mode ended.")
         elif self.ser and self.ser.is_open:
             self.ser.close()
-            print("Disconnected from 2Btech device.")
+            logger.info("Disconnected from 2Btech device.")
         else:
-            print("No active connection to disconnect.")
+            logger.info("No active 2Btech connection to disconnect.")
 
     def start_data_collection(self):
         """Start a background thread to collect data or simulate test data."""
         if not self.sim_mode and (not self.ser or not self.ser.is_open):
-            print("Device not connected. Call connect() first.")
+            logger.warning("2Btech device not connected. Call connect() first.")
             return
 
         self.is_collecting = True
@@ -93,11 +96,9 @@ class O3_2Btech:
                     parsed_data = self.parse_o3(data)
                     with self.lock:
                         self.data_buffer.append(parsed_data)  # Append new data to the buffer
-                    if self.verbose:
-                        data = data.replace('\n', '')
-                        print(f"O3 data: {data}")
-            except Exception as e:
-                print(f"Error during data collection: {e}")
+                    logger.debug(f"O3 data: {data.replace(chr(10), '')}")
+            except Exception:
+                logger.exception("Error during O3 data collection")
             time.sleep(1.0)  # Adjust the interval if needed
 
     def _simulate_test_data(self):
@@ -107,8 +108,7 @@ class O3_2Btech:
             parsed_data = self.parse_o3(test_packet)
             with self.lock:
                 self.data_buffer.append(parsed_data)
-            if self.verbose:
-                print(f"O3 Test data: {test_packet}")
+            logger.debug(f"O3 Test data: {test_packet}")
             time.sleep(2.0)  # Simulate data every 2 seconds
 
     def stop_data_collection(self):
@@ -160,8 +160,8 @@ class O3_2Btech:
 
             return v
 
-        except Exception as e:
-            print(f"Error parsing O3 packet. Data: {packet}. Error: {e}")
+        except Exception:
+            logger.exception(f"Error parsing O3 packet. Data: {packet!r}")
             return {}
     
     def calibrated_variables(self, data_dict):
@@ -233,6 +233,10 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--simulate', type=int, help="Simulate mode: Number of data packets to read and then exit.")
     
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 
     # Determine if we are running in test mode
     sim_mode = args.port is None

@@ -3,6 +3,8 @@
 import os
 import sys
 import time
+import logging
+import logging.handlers
 from argparse import ArgumentParser
 from datetime import datetime
 import threading
@@ -18,6 +20,30 @@ from display_panel import DisplayPanel
 from h2o_sensor import Maycomm
 from o3_sensor import O3_2Btech
 from telemetry import Telemetry
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(verbose=False):
+    """Configure root logger: rotating file at data/ucats-b.log + stdout stream."""
+    log_path = "data/ucats-b.log"
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG if verbose else logging.INFO)
+    for h in list(root.handlers):
+        root.removeHandler(h)
+
+    fmt = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_path, maxBytes=20 * 1024 * 1024, backupCount=5)
+    file_handler.setFormatter(fmt)
+    root.addHandler(file_handler)
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(fmt)
+    root.addHandler(stream_handler)
 
 
 class TDL_package(QMainWindow):
@@ -228,7 +254,7 @@ class TDL_package(QMainWindow):
         for device_name, device in self.devices.items():
             device.stop_data_collection()
             device.disconnect()
-        print("Data collection stopped.")
+        logger.info("Data collection stopped.")
 
     def lj_digout(self, variable, state):
         """ Send a state (0 or 1) to the labjack """
@@ -265,12 +291,12 @@ class TDL_package(QMainWindow):
         while True:
             o3 = self.streams['o3_sensor']
             if o3.empty == False:
-                print('Fail Light: O3 sensor up')
+                logger.info('Fail Light: O3 sensor up')
                 break
             time.sleep(2)
 
         # turn the fail light off while the Aeris sensors come up.
-        print('Fail Light: Waiting for Aeris instruments')
+        logger.info('Fail Light: Waiting for Aeris instruments')
         start_time = time.time()  # Record the start time
         while time.time() - start_time < aeris_wait:
             self.lj_digout('pilot_wd', 0)
@@ -283,7 +309,7 @@ class TDL_package(QMainWindow):
         a2_empty_count = 0
         o3_empty_count = 0
         
-        print('Fail Light: Monitoring Aeris now')
+        logger.info('Fail Light: Monitoring Aeris now')
         while True:
             # Watchdog signal
             self.lj_digout('pilot_wd', 0)
@@ -303,18 +329,18 @@ class TDL_package(QMainWindow):
 
             # Break loop if consecutive empty readings exceed threshold
             if a1_empty_count > max_missing_data or a2_empty_count > max_missing_data:
-                print(f'Fail Light: Aeris offline #1 {a1_empty_count}, #2 {a2_empty_count}')
+                logger.warning(f'Fail Light: Aeris offline #1 {a1_empty_count}, #2 {a2_empty_count}')
                 break
             elif o3_empty_count > max_missing_data:
-                print(f'Fail Light: O3 offline {o3_empty_count}')
+                logger.warning(f'Fail Light: O3 offline {o3_empty_count}')
                 break
-    
+
         # This is a failed condition. Don't toggle the pilot_wd line.
-        print('Fail Light: ON')
+        logger.warning('Fail Light: ON')
         self.lj_digout('pilot_wd', 0)
 
     def start_pilot_timer(self):
-        print(f'Initial pilot switch check: {self.pilot_switch}')
+        logger.info(f'Initial pilot switch check: {self.pilot_switch}')
         self.pilot_timer.start(100)
 
     def check_pilot_switch(self):
@@ -348,20 +374,20 @@ class TDL_package(QMainWindow):
             self.alt_low_count = 0
 
     def at_altitude(self):
-        print("Plane has reached altitude.")
+        logger.info("Plane has reached altitude.")
         self.alt_low_event.clear()
         self.alt_high_event.set()
         self.display_panel.sequence_start()
 
     def below_altitude(self):
-        print("Plane is descending or taxiing.")
+        logger.info("Plane is descending or taxiing.")
         self.alt_high_event.clear()
         self.alt_low_event.set()
         self.display_panel.sequence_idle()
         self.display_panel.pumps_off()
 
     def closeEvent(self, event):
-        print("Application is closing...")
+        logger.info("Application is closing...")
         if hasattr(self, 'display_panel') and self.display_panel.sequence_event:
             self.display_panel.sequence_event.set()  # Stop any running sequence
         event.accept()  # Allow the application to close
@@ -376,18 +402,20 @@ def main():
     # Parse the arguments
     args = parser.parse_args()
 
+    setup_logging(verbose=args.verbose)
+
     app = QApplication(sys.argv)
 
     # Create the TDL_package instance with the provided stream size
     package = TDL_package(config_file=args.config, verbose=args.verbose)
     package.show()
 
-     # Start the data collection with the specified duration
+    # Start the data collection with the specified duration
     if args.time is not None:
-        print(f"Starting data collection for {args.time} seconds.")
+        logger.info(f"Starting data collection for {args.time} seconds.")
         package.start_collection(run_duration=args.time)
     else:
-        print("Starting data collection without a specified time duration.")
+        logger.info("Starting data collection without a specified time duration.")
         package.start_collection()
     
     sys.exit(app.exec_())

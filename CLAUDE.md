@@ -68,6 +68,16 @@ Both payloads are CSV rows starting with the `iwg_prefix` and an ISO-like timest
 
 The earlier blocking implementation called `time.sleep` / `Event.wait` and `QApplication.processEvents()` in a `while` loop. That was deliberately avoided because mixing it with worker-thread invocations from `at_altitude` made the app unstable.
 
+### Logging
+
+`instrument.py:setup_logging()` configures the root logger at `main()` startup with a `RotatingFileHandler` to `data/ucats-b.log` (20 MB × 5 backups) plus a stdout `StreamHandler`. Every module gets its own logger via `logger = logging.getLogger(__name__)` at the top — so log lines carry the module name (`aeris`, `lj`, `telemetry`, etc.) for grepping.
+
+Severity convention: `info` for normal state events (connect, disconnect, transitions), `warning` for degraded states (sensor offline, missed cal), `error` / `exception` for failures, `debug` for per-tick raw packets (only emitted when `-v` is passed). Don't add new `print()` calls in the production path — use the logger.
+
+Standalone runs of the driver modules (`python lj.py --tog FIO0`, `python aeris.py -v`) call `logging.basicConfig()` themselves so log lines still appear on the terminal, but they don't write to `data/ucats-b.log`. CLI helpers (e.g. `lj.py`'s `--tog` / `--high` / `--low`) deliberately use `print()` for direct user feedback.
+
+The `flightmv` / `calmv` / `cleanup` scripts use the `*.log*` glob, which catches both `ucats-b.log` and any rotated backups.
+
 ## Conventions worth knowing
 
 - `config.yaml` keys are lowercased recursively on load (`lowercase_keys`), so code that looks up devices uses lowercase names (`aeris_co2`, `o3_sensor`, etc.) regardless of the YAML casing.

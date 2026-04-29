@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
+import logging
 import serial
 import threading
 import time
 from datetime import datetime
 import random
 import argparse
+
+logger = logging.getLogger(__name__)
 
 class Aeris:
     def __init__(self, port, baudrate=9600, timeout=1, prefix=None, sim_mode=False, verbose=False, inst_num=1):
@@ -60,7 +63,7 @@ class Aeris:
     def connect(self):
         """Establish the serial connection to the Aeris device or simulate connection."""
         if self.sim_mode:
-            print("Running in simulate mode. Simulating data.")
+            logger.info("Running in simulate mode. Simulating data.")
         else:
             try:
                 self.ser = serial.Serial(
@@ -72,9 +75,9 @@ class Aeris:
                     timeout=self.timeout
                 )
                 self.running = True
-                print(f"Connected to Aeris device on port {self.port}")
+                logger.info(f"Connected to Aeris device on port {self.port}")
             except serial.SerialException as e:
-                print(f"Error connecting to device: {e}")
+                logger.error(f"Error connecting to Aeris device on {self.port}: {e}")
                 self.running = False
                 self.ser = None
 
@@ -82,16 +85,16 @@ class Aeris:
         """Close the serial connection."""
         if self.ser and self.ser.is_open:
             self.ser.close()
-            print("Disconnected from Aeris device.")
+            logger.info("Disconnected from Aeris device.")
         else:
-            print("No active connection to disconnect.")
+            logger.info("No active Aeris connection to disconnect.")
 
     def start_data_collection(self):
         """Start a background thread to collect data or simulate test data."""
         if not self.sim_mode and (not self.ser or not self.ser.is_open):
-            print("Device not connected. Call connect() first.")
+            logger.warning("Aeris device not connected. Call connect() first.")
             return
-        
+
         self.is_collecting = True
         if self.sim_mode:
             threading.Thread(target=self._simulate_test_data, daemon=True).start()
@@ -108,10 +111,9 @@ class Aeris:
                 with self.serial_lock:
                     # Read a line from the analyzer
                     data = self.ser.readline().decode()
-                
-                if self.verbose:
-                    d = data.replace('\\n', '')
-                    print(f"Raw data char length({len(data)}): {d}")
+
+                d = data.replace('\\n', '')
+                logger.debug(f"Raw data char length({len(data)}): {d}")
 
                 # Data parsing and buffer handling should be outside of serial lock
                 if len(data) > 80:
@@ -119,9 +121,9 @@ class Aeris:
                     # Locking around the shared buffer to protect data access
                     with self.lock:
                         self.data_buffer.append(parsed_data)
-                    
-            except Exception as e:
-                print(f"Error during data collection: {e}")
+
+            except Exception:
+                logger.exception("Error during Aeris data collection")
             time.sleep(0.5)  # Adjust the interval if needed
 
     def _simulate_test_data(self):
@@ -131,8 +133,7 @@ class Aeris:
             parsed_data = self.parse(parsed_data)
             with self.lock:
                 self.data_buffer.append(parsed_data)
-            if self.verbose:
-               print(f"Test data: {parsed_data}")
+            logger.debug(f"Test data: {parsed_data}")
             time.sleep(1)  # Simulate data every 1 second
 
     def send_command(self, command):
@@ -147,16 +148,14 @@ class Aeris:
                     self.ser.write(command.encode())
                     response = self.ser.readline().decode().strip()
                     self.command_response = response  # Store response
-                    if self.verbose:
-                        print(f"Sent: {command}, Received: {response}")
+                    logger.debug(f"Sent: {command}, Received: {response}")
                 else:
                     response = 'Aeris offline'
                 return response
         else:
             # Simulate response
             simulated_response = f"Simulated response to {command}"
-            if self.verbose:
-                print(f"Sent (simulated): {command}, Received: {simulated_response}")
+            logger.debug(f"Sent (simulated): {command}, Received: {simulated_response}")
             self.command_response = simulated_response
             return simulated_response
 
@@ -304,6 +303,10 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true', help="Print data to screen")
     
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 
     # Determine if we are running in test mode
     sim_mode = args.port is None
