@@ -112,8 +112,7 @@ class Aeris:
                     # Read a line from the analyzer
                     data = self.ser.readline().decode()
 
-                d = data.replace('\\n', '')
-                logger.debug(f"Raw data char length({len(data)}): {d}")
+                logger.debug(f"Raw data char length({len(data)}): {data.replace(chr(10), '')}")
 
                 # Data parsing and buffer handling should be outside of serial lock
                 if len(data) > 80:
@@ -257,32 +256,29 @@ class Aeris:
         Returns:
             str: Simulated data as a comma-delimited string.
         """
-        current_time = datetime.now().replace(microsecond=0)
         simulated_data = []
 
         for var in self.variables_org:
-            if var == "datetime":
-                simulated_data.append(str(current_time))
-            elif var == "P_mbars":
+            if var == "P_mbars":
                 simulated_data.append(f"{round(random.uniform(900, 1100), 2):.2f}")
+            elif var in ["T_FET", "T_TEC", "T_TEC_Sink"]:
+                simulated_data.append(f"{round(random.uniform(20, 40), 2):.2f}")
             elif var.startswith("T"):
                 simulated_data.append(f"{round(random.uniform(15, 25), 2):.2f}")
-            elif var in ["Laser_PID_Readout", "Det_PID_Readout"]:
+            elif var in ["Laser_PID", "Det_PID"]:
                 simulated_data.append(f"{round(random.uniform(0, 100), 2):.2f}")
-            elif var == "Det_Bkgd":
-                simulated_data.append(f"{round(random.uniform(0, 10), 2):.2f}")
             elif var == "Ramp_Ampl":
                 simulated_data.append(f"{round(random.uniform(0.0, 1.0), 2):.2f}")
             elif var == "N2O_ppb":
                 simulated_data.append(f"{round(random.uniform(.300, .400), 2):.2f}")
-            elif var in ["CO2_ppm", "CO_ppb"]:
+            elif var == "CO_ppb":
+                simulated_data.append(f"{round(random.uniform(.100, .200), 2):.3f}")
+            elif var == "CO2_ppm":
                 simulated_data.append(f"{round(random.uniform(200, 400), 2):.2f}")
             elif var == "H2O_ppm":
                 simulated_data.append(f"{round(random.uniform(.1000, .2000), 2):.2f}")
             elif var == "Power_Input_mV":
                 simulated_data.append(f"{round(random.uniform(4.5, 5.5), 2):.2f}")
-            elif var in ["T_FET", "T_TEC", "T_TEC_Sink"]:
-                simulated_data.append(f"{round(random.uniform(20, 40), 2):.2f}")
             elif var == "TEC_Power":
                 simulated_data.append(f"{round(random.uniform(0.5, 2.0), 2):.2f}")
             else:
