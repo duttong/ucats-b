@@ -118,8 +118,19 @@ class TDL_package(QMainWindow):
         # start pilot light and pressure triggers
         self.initial_states()
         threading.Thread(target=self.pilot_fail_light, daemon=True).start()
-        threading.Thread(target=self.pilot_off_switch, daemon=True).start()
-        # threading.Thread(target=self.altitude_monitor, daemon=True).start()
+
+        # Pilot-off and altitude checks run on the GUI thread via QTimer
+        # so their display_panel calls don't cross thread boundaries.
+        self.pilot_low_since = None
+        self.pilot_timer = QTimer()
+        self.pilot_timer.timeout.connect(self.check_pilot_switch)
+        QTimer.singleShot(10000, self.start_pilot_timer)
+
+        self.alt_high_count = 0
+        self.alt_low_count = 0
+        self.alt_timer = QTimer()
+        self.alt_timer.timeout.connect(self.check_altitude)
+        QTimer.singleShot(5000, lambda: self.alt_timer.start(2000))
 
     def load_config(self, file_path='config.yaml'):
         """ Load the configuration from a YAML file """
@@ -302,65 +313,45 @@ class TDL_package(QMainWindow):
         print('Fail Light: ON')
         self.lj_digout('pilot_wd', 0)
 
-    def pilot_off_switch(self):
-        """
-        If the pilot turns the switch to UCATS-B off, quickly shutdown.
-        Start checking after the program has been running for 10 seconds or more.
-        """
-        # Wait for up to 10 seconds for the event to be set, non-blocking if already set
-        self.pilot_off_event.wait(10)
-        
+    def start_pilot_timer(self):
         print(f'Initial pilot switch check: {self.pilot_switch}')
-        
-        # Continuous monitoring loop
-        while not self.pilot_off_event.is_set():
-            if self.pilot_switch < 0.1:
-                # Ensure the value stays below 0.1 for at least 1 second before shutdown
-                start_time = time.time()
-                while self.pilot_switch < 0.1:
-                    if time.time() - start_time >= 1:
-                        self.display_panel.shutdown()
-                        return  # Exit after shutdown
-                    time.sleep(0.1)  # Check more frequently for responsiveness
-            else:
-                start_time = None  # Reset timer if the switch is back above threshold
-            
-            # Check every 100ms for quick responsiveness
-            time.sleep(0.1)
+        self.pilot_timer.start(100)
 
-    # pressure checks
-    def altitude_monitor(self):
-        time.sleep(5)  # wait a little to let everything startup
-        
-        alt_high_count = 0
-        alt_low_count = 0
+    def check_pilot_switch(self):
+        if self.pilot_off_event.is_set():
+            self.pilot_timer.stop()
+            return
+        if self.pilot_switch < 0.1:
+            if self.pilot_low_since is None:
+                self.pilot_low_since = time.time()
+            elif time.time() - self.pilot_low_since >= 1:
+                self.pilot_timer.stop()
+                self.display_panel.shutdown()
+        else:
+            self.pilot_low_since = None
 
-        while True:
-            if self.pressure <= self.alt_high:  # Takeoff or ascending condition
-                alt_high_count += 1
-                alt_low_count = 0  # Reset counter for the opposite condition
-                if alt_high_count >= 3 and not self.alt_high_event.is_set():
-                    self.at_altitude()
-            else:
-                alt_high_count = 0  # Reset counter if the condition is not met
+    def check_altitude(self):
+        if self.pressure <= self.alt_high:
+            self.alt_high_count += 1
+            self.alt_low_count = 0
+            if self.alt_high_count >= 3 and not self.alt_high_event.is_set():
+                self.at_altitude()
+        else:
+            self.alt_high_count = 0
 
-            if self.pressure > self.alt_low:  # Landing or descending condition
-                alt_low_count += 1
-                alt_high_count = 0  # Reset counter for the opposite condition
-                if alt_low_count >= 3 and not self.alt_low_event.is_set():
-                    self.below_altitude()
-            else:
-                alt_low_count = 0  # Reset counter if the condition is not met
-
-            time.sleep(2)  # Polling interval
+        if self.pressure > self.alt_low:
+            self.alt_low_count += 1
+            self.alt_high_count = 0
+            if self.alt_low_count >= 3 and not self.alt_low_event.is_set():
+                self.below_altitude()
+        else:
+            self.alt_low_count = 0
 
     def at_altitude(self):
         print("Plane has reached altitude.")
         self.alt_low_event.clear()
         self.alt_high_event.set()
-        # Start sequence_start in a new thread to avoid blocking
-        sequence_thread = threading.Thread(target=self.display_panel.sequence_start, daemon=True)
-        sequence_thread.start()
+        self.display_panel.sequence_start()
 
     def below_altitude(self):
         print("Plane is descending or taxiing.")

@@ -7,7 +7,7 @@ import subprocess
 import threading
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QApplication, QMessageBox
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 
 class PilotIndicator(QLabel):
     """ Pilot fail light indecator. This will flash between yellow and blue
@@ -29,6 +29,11 @@ class DisplayPanel(QWidget):
         self.config = self.load_config(config_file)
         self.devices = devices
         self.sequence_event = threading.Event()
+        self.sequence_timer = QTimer()
+        self.sequence_timer.timeout.connect(self._sequence_tick)
+        self.sequence_step = 0
+        self.sequence_remaining = 0
+        self.sequence_label = ""
         self.button_font = "font-size: 16px;"
         self.start_time = datetime.datetime.now()
         self.initUI()
@@ -334,73 +339,64 @@ class DisplayPanel(QWidget):
         self.sequence_idle() if self.sequence_button.isChecked() else self.sequence_start()
 
     def sequence_start(self):
-        self.sequence_event.clear()  # Prepare to start the sequence
+        self.sequence_event.clear()
         self.sequence_button.setChecked(False)
         self.sequence_button.setStyleSheet(
-            f"background-color: DarkSeaGreen; color: Black; border: 1px solid #CC9999; {self.button_font}")  
-        
-        air_s = float(self.config['triggers'].get('air_duration', 300))  # default 300
-        cal_s = float(self.config['triggers'].get('cal_duration', 20))   # default 20
+            f"background-color: DarkSeaGreen; color: Black; border: 1px solid #CC9999; {self.button_font}")
+        self.sequence_step = -1
+        self._sequence_advance()
+        self.sequence_timer.start(1000)
 
-        def countdown(duration, label):
-            update_interval = 0.2  # Faster loop interval (0.2 seconds)
-            remaining_time = duration
-            last_displayed_time = int(remaining_time)  # To avoid frequent unnecessary updates
+    def _sequence_advance(self):
+        air_s = int(float(self.config['triggers'].get('air_duration', 300)))
+        cal_s = int(float(self.config['triggers'].get('cal_duration', 20)))
 
-            while remaining_time > 0:
-                if self.sequence_event.is_set():  # Check if stop was requested
-                    return True
+        self.sequence_step = (self.sequence_step + 1) % 4
 
-                # Update UI only when the integer part of the remaining time changes
-                current_display_time = int(remaining_time)
-                if current_display_time != last_displayed_time:
-                    self.sequence_button.setText(f"Running Sequence: {label} ({current_display_time}s)")
-                    QApplication.processEvents()  # Update UI
-                    last_displayed_time = current_display_time
-
-                # Wait for 0.1 seconds, checking if stop was requested
-                if self.sequence_event.wait(update_interval):
-                    return True
-
-                remaining_time -= update_interval
-
-            return False  # Countdown finished normally
-        
-        while not self.sequence_event.is_set():
-            # Cal 0
+        if self.sequence_step == 0:
             self.cals()
             self.cal0()
-            if countdown(cal_s, "Cal 0"):
-                break
-
-            # Air
+            self.sequence_remaining = cal_s
+            self.sequence_label = "Cal 0"
+        elif self.sequence_step == 1:
             self.air()
             self.cal0()
-            if countdown(air_s, "Air"):
-                break
-
-            # Cal 1
+            self.sequence_remaining = air_s
+            self.sequence_label = "Air"
+        elif self.sequence_step == 2:
             self.cals()
             self.cal1()
-            if countdown(cal_s, "Cal 1"):
-                break
-
-            # Air
+            self.sequence_remaining = cal_s
+            self.sequence_label = "Cal 1"
+        else:
             self.air()
             self.cal0()
-            if countdown(air_s, "Air"):
-                break
+            self.sequence_remaining = air_s
+            self.sequence_label = "Air"
 
-    # Add Stop Function to Reset UI and Stop the Sequence
+        self.sequence_button.setText(
+            f"Running Sequence: {self.sequence_label} ({self.sequence_remaining}s)")
+
+    def _sequence_tick(self):
+        if self.sequence_event.is_set():
+            self.sequence_idle()
+            return
+        self.sequence_remaining -= 1
+        if self.sequence_remaining <= 0:
+            self._sequence_advance()
+        else:
+            self.sequence_button.setText(
+                f"Running Sequence: {self.sequence_label} ({self.sequence_remaining}s)")
+
     def sequence_idle(self):
-        self.sequence_event.set()  # Signal to stop the sequence
+        self.sequence_timer.stop()
+        self.sequence_event.set()
         self.air()
         self.cal0()
         self.sequence_button.setChecked(True)
         self.sequence_button.setText("Sequence Idle")
         self.sequence_button.setStyleSheet(
             f"background-color: LightGray; color: Black; border: 1px solid #999; {self.button_font}")
-        QApplication.processEvents()  # Refresh UI
 
     def shutdown_menu(self, sensor_type):
         msg = QMessageBox()
