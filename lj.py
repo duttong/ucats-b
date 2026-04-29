@@ -18,7 +18,7 @@ class LabJackController:
         self.verbose = verbose
         self.variables = []
         self.digout_states = {}  # keeps track of the most recent set dig state
-        self.handle = self.initialize_labjack()
+        self.handle = None
         self.is_collecting = False
         self.lock = threading.Lock()
         self.data_buffer = []  # Buffer to store incoming data
@@ -176,16 +176,12 @@ class LabJackController:
             
             if not self.sim_mode:
                 with self.lock:
-                    # Write the specified value to the digital line
-                    #print(f'{line} = {value}')
                     ljm.eWriteName(self.handle, address, value)
-
-                # record state in digout variable name
-                for add, var in (self.config.get("digouts") or {}).items():
-                    if add == address:
-                        if self.prefix:
-                            var = f'{self.prefix}{var}'
-                        self.digout_states[var] = value
+                    for add, var in (self.config.get("digouts") or {}).items():
+                        if add == address:
+                            if self.prefix:
+                                var = f'{self.prefix}{var}'
+                            self.digout_states[var] = value
                   
     def _collect_data(self):
         while self.is_collecting:
@@ -194,15 +190,13 @@ class LabJackController:
                     current_datetime = {'datetime': datetime.now().replace(microsecond=0)}
                     analog_readings = self.read_analog()
                     digital_readings = self.read_digital()
-                    # add DAC
                     data = current_datetime | analog_readings | digital_readings | self.digout_states
                     self.data_buffer.append(data)
                     if self.verbose:
                         print(data)
-
-                time.sleep(self.freq)
             except Exception as e:
                 print(f"Error during data collection in lj.py: {e}")
+            time.sleep(self.freq)
 
     def _simulate_test_data(self):
          while self.is_collecting:
