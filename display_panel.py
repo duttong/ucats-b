@@ -226,9 +226,11 @@ class DisplayPanel(QWidget):
             # Construct the key used to store labels (device name + variable name)
             label_key = f"{device_name}_{var_name}"
             if label_key in self.data_labels:
-                # Format float numbers as XXXX.XX
                 if isinstance(var_value, float):
-                    formatted_value = "{:7.2f}".format(var_value)
+                    if "CH4" in var_name:
+                        formatted_value = "{:7.3f}".format(var_value)
+                    else:
+                        formatted_value = "{:7.2f}".format(var_value)
                 else:
                     formatted_value = str(var_value)
                 self.data_labels[label_key].setText(formatted_value)

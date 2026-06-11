@@ -51,7 +51,7 @@ class Aeris:
             # CH4 instrument
             self.variables_org = [
                 "Unused_0", "P_mbars", "T_gas", "T_ambient", "T_TEC", "Unused_1",
-                "CH4_ppm", "H2O_ppm", "Det_PID", "T_TEC_Sink", "Unused_3"]
+                "Unused_2", "CH4_ppm", "H2O_ppm", "T_TEC_Sink", "Unused_3"]
             self.variables = self.variables_org + ['CH4c_ppm']
 
         else:
@@ -218,7 +218,9 @@ class Aeris:
         # Convert values to float and round based on variable name
         for key in parsed_data.keys():
             try:
-                if "ppm" in key:
+                if "CH4" in key and "ppm" in key:
+                    parsed_data[key] = round(float(parsed_data[key]), 3)
+                elif "ppm" in key:
                     parsed_data[key] = round(float(parsed_data[key]), 2)  # Round
                 elif "ppb" in key:
                     parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)  # Convert ppm to ppb
