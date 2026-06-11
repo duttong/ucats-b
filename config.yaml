@@ -33,7 +33,7 @@ devices:
       - T_gas
       - T_ambient
       - T_TEC_Sink
-      - CH4c_ppm
+      - CH4c_ppb
       - H2O_ppm
 
   O3_sensor:

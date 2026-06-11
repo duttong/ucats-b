@@ -228,7 +228,9 @@ class DisplayPanel(QWidget):
             if label_key in self.data_labels:
                 if isinstance(var_value, float):
                     if "CH4" in var_name:
-                        formatted_value = "{:7.3f}".format(var_value)
+                        formatted_value = "{:7.1f}".format(var_value)
+                    elif "H2O" in var_name:
+                        formatted_value = "{:7.0f}".format(var_value)
                     else:
                         formatted_value = "{:7.2f}".format(var_value)
                 else:

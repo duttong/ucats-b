@@ -51,8 +51,8 @@ class Aeris:
             # CH4 instrument
             self.variables_org = [
                 "Unused_0", "P_mbars", "T_gas", "T_ambient", "T_TEC", "Unused_1",
-                "Unused_2", "CH4_ppm", "H2O_ppm", "T_TEC_Sink", "Unused_3"]
-            self.variables = self.variables_org + ['CH4c_ppm']
+                "Unused_2", "CH4_ppb", "H2O_ppm", "T_TEC_Sink", "Unused_3"]
+            self.variables = self.variables_org + ['CH4c_ppb']
 
         else:
             self.variables_org = [
@@ -218,9 +218,7 @@ class Aeris:
         # Convert values to float and round based on variable name
         for key in parsed_data.keys():
             try:
-                if "CH4" in key and "ppm" in key:
-                    parsed_data[key] = round(float(parsed_data[key]), 3)
-                elif "ppm" in key:
+                if "ppm" in key:
                     parsed_data[key] = round(float(parsed_data[key]), 2)  # Round
                 elif "ppb" in key:
                     parsed_data[key] = round(float(parsed_data[key]) * 1000, 2)  # Convert ppm to ppb
@@ -250,8 +248,8 @@ class Aeris:
             data_dict[f'{self.prefix}COc_ppb'] = co_corr
         elif self.inst_num == 3:
             # CH4 instrument — calibration TBD, identity for now
-            ch4 = float(data_dict.get(f'{self.prefix}CH4_ppm', float('nan')))
-            data_dict[f'{self.prefix}CH4c_ppm'] = ch4
+            ch4 = float(data_dict.get(f'{self.prefix}CH4_ppb', float('nan')))
+            data_dict[f'{self.prefix}CH4c_ppb'] = ch4
         else:
             # new inst
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
@@ -282,7 +280,7 @@ class Aeris:
                 simulated_data.append(f"{round(random.uniform(0, 100), 2):.2f}")
             elif var == "Ramp_Ampl":
                 simulated_data.append(f"{round(random.uniform(0.0, 1.0), 2):.2f}")
-            elif var == "CH4_ppm":
+            elif var == "CH4_ppb":
                 simulated_data.append(f"{round(random.uniform(1.8, 2.0), 4):.4f}")
             elif var == "N2O_ppb":
                 simulated_data.append(f"{round(random.uniform(.300, .400), 2):.2f}")

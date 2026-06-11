@@ -9,7 +9,7 @@ mts:
     - datetime
     - d1_CO2c_ppm
     - d1_N2Oc_ppb
-    - d2_CH4c_ppm
+    - d2_CH4c_ppb
     - oz_o3best
     - w_H2Obest
     - oz_p
@@ -29,7 +29,7 @@ data:
     - datetime
     - d1_CO2c_ppm
     - d1_N2Oc_ppb
-    - d2_CH4c_ppm
+    - d2_CH4c_ppb
 
     - d1_P_mbars
     - d1_T_gas
