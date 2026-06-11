@@ -319,7 +319,7 @@ class TDL_package(QMainWindow):
 
             # Read data from sensors
             a1 = self.streams['aeris_co2']
-            a2 = self.streams['aeris_co']
+            a2 = self.streams['aeris_ch4']
             o3 = self.streams['o3_sensor']
 
             # Update empty count for sensors

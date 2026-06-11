@@ -22,7 +22,7 @@ class Aeris:
             prefix (str, optional): A prefix string applied to the names of all the data variable returned.
             sim_mode (bool, optional): If True, simulate data instead of using the real device. Default is False.
             verbose (bool, optional): If True, print data to stdout (the screen).
-            inst_num (int, optional): Distinguishes between inst 1 or 2 (1 = CO2, 2 = CO).
+            inst_num (int, optional): Distinguishes between instruments (1 = CO, 2 = CO2, 3 = CH4).
         """
         self.port = port
         self.baudrate = baudrate
@@ -46,7 +46,14 @@ class Aeris:
                 "Unused_0", "P_mbars", "T_gas", "T_ambient", "Unused_1", "Unused_2",
                 "N2O_ppb", "H2O_ppm", "CO_ppb", "T_TEC_Sink", "Unused_3"]
             self.variables = self.variables_org + ['COc_ppb', 'N2Oc_ppb']
-            
+
+        elif inst_num == 3:
+            # CH4 instrument
+            self.variables_org = [
+                "Unused_0", "P_mbars", "T_gas", "T_ambient", "T_TEC", "Unused_1",
+                "CH4_ppm", "H2O_ppm", "Det_PID", "T_TEC_Sink", "Unused_3"]
+            self.variables = self.variables_org + ['CH4c_ppm']
+
         else:
             self.variables_org = [
                 "Unused_0", "P_mbars", "T_gas", "Unused_1", "T_ambient", "Unused_2", "Unused_3", 
@@ -239,6 +246,10 @@ class Aeris:
             co_corr = (co*1.179*1000 - 12.7)/1000
             data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
             data_dict[f'{self.prefix}COc_ppb'] = co_corr
+        elif self.inst_num == 3:
+            # CH4 instrument — calibration TBD, identity for now
+            ch4 = float(data_dict.get(f'{self.prefix}CH4_ppm', float('nan')))
+            data_dict[f'{self.prefix}CH4c_ppm'] = ch4
         else:
             # new inst
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
@@ -269,6 +280,8 @@ class Aeris:
                 simulated_data.append(f"{round(random.uniform(0, 100), 2):.2f}")
             elif var == "Ramp_Ampl":
                 simulated_data.append(f"{round(random.uniform(0.0, 1.0), 2):.2f}")
+            elif var == "CH4_ppm":
+                simulated_data.append(f"{round(random.uniform(1.8, 2.0), 4):.4f}")
             elif var == "N2O_ppb":
                 simulated_data.append(f"{round(random.uniform(.300, .400), 2):.2f}")
             elif var == "CO_ppb":
@@ -293,7 +306,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Test the Aeris driver.")
     
     parser.add_argument('-p', '--port', required=False, help="Serial port to connect to (e.g., COM3 or /dev/ttyUSB0).")
-    parser.add_argument('-i', '--inst', type=int, default=1, help="Instrument number (1 = CO2, 2 = CO)")
+    parser.add_argument('-i', '--inst', type=int, default=1, help="Instrument number (1 = CO, 2 = CO2, 3 = CH4)")
     parser.add_argument('-t', '--test', type=int, help="Test mode: Number of data packets to read and then exit.")
     parser.add_argument('-s', '--simulate', action='store_true', help="Simulate mode: Number of data packets to read and then exit.")
     parser.add_argument('-v', '--verbose', action='store_true', help="Print data to screen")

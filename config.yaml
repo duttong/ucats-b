@@ -23,8 +23,8 @@ devices:
       - N2Oc_ppb
       - CO2c_ppm
 
-  Aeris_CO:
-    inst_num: 1   # don't change this
+  Aeris_CH4:
+    inst_num: 3   # don't change this
     serial_port: /dev/ttyUSB3
     sim_mode: false
     data_var_prefix: d2_
@@ -33,9 +33,8 @@ devices:
       - T_gas
       - T_ambient
       - T_TEC_Sink
-      - blank
-      - N2Oc_ppb
-      - COc_ppb
+      - CH4c_ppm
+      - H2O_ppm
 
   O3_sensor:
     serial_port: /dev/ttyUSB2

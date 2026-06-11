@@ -89,7 +89,7 @@ class DisplayPanel(QWidget):
 
             # set the columns in the display where the device is shown
             colinc = 0
-            if device_name in ["aeris_co", "h2o_sensor"]:
+            if device_name in ["aeris_ch4", "h2o_sensor"]:
                 colinc = 2
             elif device_name in ["labjack"]:
                 colinc = 4
@@ -165,7 +165,7 @@ class DisplayPanel(QWidget):
             f"background-color: #FFCCCC; color: black; border: 1px solid #CC9999; {self.button_font}"
         )
         
-        self.co_reboot_button = QPushButton("Aeris CO cmd")
+        self.co_reboot_button = QPushButton("Aeris CH4 cmd")
         self.co_reboot_button.clicked.connect(self.show_co_options)
         self.co_reboot_button.setStyleSheet(
             f"background-color: #FFCCCC; color: black; border: 1px solid #CC9999; {self.button_font}"
@@ -248,19 +248,19 @@ class DisplayPanel(QWidget):
             if sensor_type == "Aeris CO2":
                 self.aeris_command("aeris_co2", cmd)
             else:
-                self.aeris_command("aeris_co", cmd)
+                self.aeris_command("aeris_ch4", cmd)
         elif msg.clickedButton() == shutdown_button:
             cmd = "shutdown"
             if sensor_type == "Aeris CO2":
                 self.aeris_command("aeris_co2", cmd)
             else:
-                self.aeris_command("aeris_co", cmd)
+                self.aeris_command("aeris_ch4", cmd)
 
     def show_co2_options(self):
         self.show_menu("Aeris CO2")
 
     def show_co_options(self):
-        self.show_menu("Aeris CO")
+        self.show_menu("Aeris CH4")
 
     # Entry function for Aeris CO2 Reboot button
     def aeris_command(self, device_name, command):
@@ -417,7 +417,7 @@ class DisplayPanel(QWidget):
 
         # tell aeris instruments to shutdown
         self.aeris_command('aeris_co2', 'shutdown')
-        self.aeris_command('aeris_co', 'shutdown')
+        self.aeris_command('aeris_ch4', 'shutdown')
         time.sleep(0.1)
         # Flush all log handlers before the OS halts
         logging.shutdown()

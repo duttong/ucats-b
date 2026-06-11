@@ -4,7 +4,7 @@ Airborne data acquisition for the UCATS-B atmospheric sampling instrument packag
 
 ## Hardware
 
-- **Aeris TDL #1** — CO + N2O analyzer (`/dev/ttyUSB3`, 9600 baud)
+- **Aeris TDL #1** — CH4 + H2O analyzer (`/dev/ttyUSB3`, 9600 baud)
 - **Aeris TDL #2** — CO2 + N2O analyzer (`/dev/ttyUSB0`, 9600 baud)
 - **2B Technologies ozone monitor** (`/dev/ttyUSB2`, 4800 baud)
 - **Maycomm water vapor analyzer** (`/dev/ttyUSB1`, 115200 baud)

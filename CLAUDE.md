@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project context
 
-UCATS-B is the airborne data acquisition system for the UCATS-B instrument package: two Aeris TDL analyzers (CO2/N2O and CO/N2O), a 2BTech ozone monitor, a Maycomm water vapor analyzer, and a LabJack T4 for digital/analog I/O (cal solenoids, pump control, pilot watchdog, pressure transducers). Target host is an Ubuntu laptop on a research aircraft; the GUI runs full-screen during flight and the desktop launchers in `desktop/` are installed as `.desktop` files on that machine.
+UCATS-B is the airborne data acquisition system for the UCATS-B instrument package: two Aeris TDL analyzers (CO2/N2O and CH4/H2O), a 2BTech ozone monitor, a Maycomm water vapor analyzer, and a LabJack T4 for digital/analog I/O (cal solenoids, pump control, pilot watchdog, pressure transducers). Target host is an Ubuntu laptop on a research aircraft; the GUI runs full-screen during flight and the desktop launchers in `desktop/` are installed as `.desktop` files on that machine.
 
 ## Running
 
@@ -80,6 +80,6 @@ The `flightmv` / `calmv` / `cleanup` scripts use the `*.log*` glob, which catche
 
 ## Conventions worth knowing
 
-- `config.yaml` keys are lowercased recursively on load (`lowercase_keys`), so code that looks up devices uses lowercase names (`aeris_co2`, `o3_sensor`, etc.) regardless of the YAML casing.
+- `config.yaml` keys are lowercased recursively on load (`lowercase_keys`), so code that looks up devices uses lowercase names (`aeris_co2`, `aeris_ch4`, `o3_sensor`, etc.) regardless of the YAML casing.
 - Data files in `data/` are gitignored; never check them in. Old test data may be present locally.
 - `unused/` holds older standalone scripts (`telem.py`, `listen.py`, `pilot_light.py`) kept for reference — not imported by the running app.
