@@ -52,7 +52,7 @@ class Aeris:
             self.variables_org = [
                 "Unused_0", "P_mbars", "T_gas", "T_ambient", "T_TEC", "Unused_1",
                 "Unused_2", "CH4_ppb", "H2O_ppm", "T_TEC_Sink", "Unused_3"]
-            self.variables = self.variables_org + ['CH4c_ppb']
+            self.variables = self.variables_org + ['CH4c_ppb', 'H2Oc_ppm']
 
         else:
             self.variables_org = [
@@ -250,6 +250,9 @@ class Aeris:
             # CH4 instrument — calibration TBD, identity for now
             ch4 = float(data_dict.get(f'{self.prefix}CH4_ppb', float('nan')))
             data_dict[f'{self.prefix}CH4c_ppb'] = ch4
+            # H2O calibration TBD, identity for now
+            h2o = float(data_dict.get(f'{self.prefix}H2O_ppm', float('nan')))
+            data_dict[f'{self.prefix}H2Oc_ppm'] = h2o
         else:
             # new inst
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))

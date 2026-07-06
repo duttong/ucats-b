@@ -34,7 +34,7 @@ devices:
       - T_ambient
       - T_TEC_Sink
       - CH4c_ppb
-      - H2O_ppm
+      - H2Oc_ppm
 
   O3_sensor:
     serial_port: /dev/ttyUSB2
