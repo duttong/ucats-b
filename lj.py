@@ -134,7 +134,13 @@ class LabJackController:
         #ljm.eWriteName(self.handle, "DIO1_DIRECTION", 0)  # 0 = Input, 1 = Output
         return
 
-    def read_analog(self):
+    def read_analog(self, address=None):
+        """ Reads analog channels defined in config.yaml or
+            reads one raw address defined in the input """
+        if address:
+            value = ljm.eReadName(self.handle, address)
+            return value
+
         analog_readings = {}
         for channel, meta in (self.config.get("analog") or {}).items():
             var, cal = meta['var'], meta['cal']
@@ -274,6 +280,7 @@ def main():
     parser.add_argument("--config", type=str, help="Path to the configuration YAML file")
     parser.add_argument('-v', '--verbose', action='store_true', help="Print raw data to stdout")
     parser.add_argument("--digin", type=str, help="Read a digital line (e.g., CIO0)")
+    parser.add_argument("--ain", type=str, help="Read a raw analog channel (e.g., AIN0)")
     parser.add_argument("--tog", type=str, help="Toggle a digital line (e.g., EIO0)")
     parser.add_argument("--high", type=str, help="Sets a digital line high/on.")
     parser.add_argument("--low", type=str, help="Sets a digital line low/off.")
@@ -284,12 +291,16 @@ def main():
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 
     jack = LabJackController(args.config, verbose=args.verbose)
+    jack.connect()
 
     if args.tog:
         jack.toggle_digital(args.tog)
     elif args.digin:
         value = jack.read_digital(args.digin)
         print(f"Dig {args.digin} is {value}")
+    elif args.ain:
+        value = jack.read_analog(args.ain)
+        print(f"Analog {args.ain} is {value}")
     elif args.high:
         jack.write_digital({f"{args.high}": 1})
         print(f"Dig {args.high} set HIGH")
