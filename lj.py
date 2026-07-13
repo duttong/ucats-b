@@ -281,6 +281,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help="Print raw data to stdout")
     parser.add_argument("--digin", type=str, help="Read a digital line (e.g., CIO0)")
     parser.add_argument("--ain", type=str, help="Read a raw analog channel (e.g., AIN0)")
+    parser.add_argument("--repeat", action="store_true", help="With --ain, read at 1 Hz until Ctrl-C")
     parser.add_argument("--tog", type=str, help="Toggle a digital line (e.g., EIO0)")
     parser.add_argument("--high", type=str, help="Sets a digital line high/on.")
     parser.add_argument("--low", type=str, help="Sets a digital line low/off.")
@@ -298,8 +299,16 @@ def main():
     elif args.digin:
         value = jack.read_digital(args.digin)
         print(f"Dig {args.digin} is {value}")
+    elif args.ain and args.repeat:
+        try:
+            while True:
+                value = round(jack.read_analog(args.ain), 3)
+                print(f"{datetime.now().replace(microsecond=0)} Analog {args.ain} is {value}")
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("Stopped.")
     elif args.ain:
-        value = jack.read_analog(args.ain)
+        value = round(jack.read_analog(args.ain), 3)
         print(f"Analog {args.ain} is {value}")
     elif args.high:
         jack.write_digital({f"{args.high}": 1})
