@@ -173,43 +173,50 @@ class CSVPlotter(QMainWindow):
         """
         Periodically load new data from the CSV file and update the plot.
         """
-        if self.data is not None and not self.csv_file_label.text().endswith("No recent 'tdl-' CSV file found."):
-            # Store the current x and y limits for both axes
+        if self.data is None or self.csv_file_label.text().endswith("No recent 'tdl-' CSV file found."):
+            return
+
+        # Store the current x and y limits for both axes, if a plot exists yet
+        # (it won't if the CSV file has a header but no data rows yet)
+        had_axes = self.ax is not None
+        if had_axes:
             xlim = self.ax.get_xlim()
             ylim = self.ax.get_ylim()
-            ylim_left = self.ax.get_ylim()
             ylim_right = self.ax2.get_ylim() if self.ax2 else None
 
-            # Store the current selections for variables
-            variable_1 = self.variable_combo_1.currentText()
-            variable_2 = self.variable_combo_2.currentText()
-            variable_3 = self.variable_combo_3.currentText()
-            variable_4 = self.variable_combo_4.currentText()
+        # Store the current selections for variables
+        variable_1 = self.variable_combo_1.currentText()
+        variable_2 = self.variable_combo_2.currentText()
+        variable_3 = self.variable_combo_3.currentText()
+        variable_4 = self.variable_combo_4.currentText()
 
-            # Reload data (consider loading only new rows if possible)
-            self.load_csv_data(self.current_file_path)
+        # Reload data (consider loading only new rows if possible)
+        self.load_csv_data(self.current_file_path)
 
-            # Restore the selected variables after reloading the data
-            self.variable_combo_1.setCurrentText(variable_1)
-            self.variable_combo_2.setCurrentText(variable_2)
-            self.variable_combo_3.setCurrentText(variable_3)
-            self.variable_combo_4.setCurrentText(variable_4)
+        # Restore the selected variables after reloading the data
+        self.variable_combo_1.setCurrentText(variable_1)
+        self.variable_combo_2.setCurrentText(variable_2)
+        self.variable_combo_3.setCurrentText(variable_3)
+        self.variable_combo_4.setCurrentText(variable_4)
 
-            # Update the plot with new data but maintain the same scales
-            self.plot_data()
+        # Update the plot with new data but maintain the same scales
+        self.plot_data()
 
-            # Restore x and y limits to maintain the zoom level
-            if self.user_modified_view:
-                self.ax.set_xlim(xlim)
-                self.ax.set_ylim(ylim)
-                if ylim_right is not None:
-                    self.ax2.set_ylim(ylim_right)
-            else:
-                self.ax.relim()
-                self.ax.autoscale_view()
+        if self.ax is None:
+            return
 
-            # Redraw the canvas to reflect changes
-            self.canvas.draw()
+        # Restore x and y limits to maintain the zoom level
+        if had_axes and self.user_modified_view:
+            self.ax.set_xlim(xlim)
+            self.ax.set_ylim(ylim)
+            if ylim_right is not None:
+                self.ax2.set_ylim(ylim_right)
+        else:
+            self.ax.relim()
+            self.ax.autoscale_view()
+
+        # Redraw the canvas to reflect changes
+        self.canvas.draw()
             
     def update_statistics(self, event=None):
         """
@@ -334,7 +341,7 @@ class CSVPlotter(QMainWindow):
         self.plot_data()
 
     def plot_data(self):
-        if self.data is None:
+        if self.data is None or self.data.empty:
             return
         
         # Variables for left and right axes
