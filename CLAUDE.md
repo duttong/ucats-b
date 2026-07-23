@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project context
 
-UCATS-B is the airborne data acquisition system for the UCATS-B instrument package: two Aeris TDL analyzers (CO2/N2O and CH4/H2O), a 2BTech ozone monitor, a Maycomm water vapor analyzer, and a LabJack T4 for digital/analog I/O (cal solenoids, pump control, pilot watchdog, pressure transducers). Target host is an Ubuntu laptop on a research aircraft; the GUI runs full-screen during flight and the desktop launchers in `desktop/` are installed as `.desktop` files on that machine.
+UCATS-B is the airborne data acquisition system for the UCATS-B instrument package: two Aeris TDL analyzers (CO2/N2O and CH4/H2O), a 2BTech ozone monitor, a Maycomm water vapor analyzer, and a LabJack T4 for digital/analog I/O (cal solenoids, pump control, pilot watchdog, pressure transducers). Target host is a Raspberry Pi (hostname `ucatsb`, Raspberry Pi OS/Debian, arm64) on a research aircraft; the GUI runs full-screen during flight and the desktop launchers in `desktop/` are installed as `.desktop` files on that machine.
 
 ## Running
 
@@ -77,6 +77,14 @@ Severity convention: `info` for normal state events (connect, disconnect, transi
 Standalone runs of the driver modules (`python lj.py --tog FIO0`, `python aeris.py -v`) call `logging.basicConfig()` themselves so log lines still appear on the terminal, but they don't write to `data/ucats-b.log`. CLI helpers (e.g. `lj.py`'s `--tog` / `--high` / `--low`) deliberately use `print()` for direct user feedback.
 
 The `flightmv` / `calmv` / `cleanup` scripts use the `*.log*` glob, which catches both `ucats-b.log` and any rotated backups.
+
+### Host access
+
+On the aircraft/lab WiFi, the Pi is reachable via mDNS as `ucatsb.local`; SSH in as `ucats@ucatsb.local` (not `ucatsb` — that's the hostname, not the username). RealVNC Server is provisioned on the Pi for graphical access — use RealVNC Viewer, not macOS's built-in Screen Sharing, which isn't compatible with RealVNC's default auth scheme.
+
+### Clock and time sync
+
+The Pi has a DS3231 RTC module on the I2C header (`dtoverlay=i2c-rtc,ds3231` in `/boot/firmware/config.txt`, I2C address `0x68`). At boot, the kernel sets the system clock from this RTC before any network is up (visible in `dmesg` as `rtc-ds1307 1-0068: setting system clock to ...`). `systemd-timesyncd` is enabled and corrects the clock via NTP once network is reachable (currently falls back to `pool.ntp.org`; the aircraft's in-flight GPS-derived NTP source is not yet configured — TODO once its address is known, likely set via `NTP=` in `/etc/systemd/timesyncd.conf`, since `pool.ntp.org` won't be reachable mid-flight). While the system clock is NTP-synchronized, the kernel automatically writes it back to the RTC roughly every 11 minutes, so the RTC stays accurate across power cycles as long as its backup coin cell is good. A dead/missing coin cell shows up as a `SET TIME!` warning from the `rtc-ds1307` driver in `dmesg` at boot, plus a bogus/stale `RTC time` in `timedatectl status` — worth checking physically if that recurs.
 
 ## Conventions worth knowing
 
