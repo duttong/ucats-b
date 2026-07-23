@@ -436,8 +436,9 @@ class CSVPlotter(QMainWindow):
         xtick_formatter = mdates.DateFormatter('%H:%M:%S')
         self.ax.xaxis.set_major_formatter(xtick_formatter)
 
-        if not self.data['datetime'].empty:
-            date_str = self.data['datetime'].iloc[0].strftime('%Y-%m-%d')
+        valid_datetimes = self.data['datetime'].dropna()
+        if not valid_datetimes.empty:
+            date_str = valid_datetimes.iloc[0].strftime('%Y-%m-%d')
             self.ax.set_xlabel(f'Date: {date_str}')
 
         for label in self.ax.get_xticklabels():
