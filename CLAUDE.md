@@ -84,6 +84,15 @@ On the aircraft/lab WiFi, the Pi is reachable via mDNS as `ucatsb.local`; SSH in
 
 The Pi has three network interfaces: `eth0` is unused/down; `eth1` (a USB-to-Ethernet adapter) is the wired connection to the aircraft's onboard network (`10.11.96.x`, same range as the MTS box in `telem-config.yaml` — the Pi gets `10.11.96.145` there); and `wlan0` (WiFi) is for lab/ground access, which is what `ucatsb.local` mDNS resolution uses.
 
+The aircraft's `10.11.96.x` network (both the wired side and its own WiFi) has **no DHCP** — every device needs a static IP assigned manually, and there's no central registry, so keep this list current to avoid collisions:
+- `10.11.96.1` — aircraft router (NTP source)
+- `10.11.96.145` — `ucatsb` (this Pi, via `eth1`)
+- `10.11.96.146` — dev laptop, when connected to the aircraft WiFi for testing (manually assigned, not persistent)
+- `10.11.96.149` — the legacy `ucats` instrument (predecessor system, still on the aircraft network)
+- `10.11.96.131` — MTS system (receives `mts:` telemetry from `telem-config.yaml`)
+
+The aircraft WiFi itself has no internet access — it only routes to devices on `10.11.96.x` — unlike the lab/ground WiFi.
+
 ### Clock and time sync
 
 The Pi has a DS3231 RTC module on the I2C header (`dtoverlay=i2c-rtc,ds3231` in `/boot/firmware/config.txt`, I2C address `0x68`). At boot, the kernel sets the system clock from this RTC before any network is up (visible in `dmesg` as `rtc-ds1307 1-0068: setting system clock to ...`). `systemd-timesyncd` is enabled and corrects the clock via NTP once network is reachable; `/etc/systemd/timesyncd.conf` sets `NTP=10.11.96.1` (the aircraft router, reachable over `eth1` in flight) with the Debian pool servers as `FallbackNTP=` for when it's only on ground/lab WiFi. Confirmed working on the aircraft: `eth1` came up at `10.11.96.145` and `timedatectl timesync-status` showed an active sync against `10.11.96.1` (nonzero packet count, small offset). While the system clock is NTP-synchronized, the kernel automatically writes it back to the RTC roughly every 11 minutes, so the RTC stays accurate across power cycles as long as its backup coin cell is good. A dead/missing coin cell shows up as a `SET TIME!` warning from the `rtc-ds1307` driver in `dmesg` at boot, plus a bogus/stale `RTC time` in `timedatectl status` — worth checking physically if that recurs.
