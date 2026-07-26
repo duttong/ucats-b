@@ -35,9 +35,38 @@ sudo nmcli connection modify USB2-Ethernet ipv4.gateway 10.11.96.1 ipv4.never-de
 
 `USB2-Ethernet` is `autoconnect: yes` with unlimited retries and a `manual`
 (static) IPv4 method, so it activates as soon as `eth1` gets carrier —
-whichever powers on first, ucatsb or the aircraft router. Confirmed after
-`nmcli connection up USB2-Ethernet`: `default via 10.11.96.1 dev eth1 metric
-100`, correctly preferred over WiFi's `metric 600` default route.
+whichever powers on first, ucatsb or the aircraft router.
+
+Ethernet connections get a lower default NM route metric (100) than WiFi
+(600), so the first version of this fix made `eth1`'s default route win
+over `wlan0` unconditionally. That broke bench testing: on the bench,
+`eth1` commonly has a ground-checkout laptop plugged into it (not the
+aircraft router), which is enough to give it carrier and activate the
+profile, but `10.11.96.1` isn't actually reachable through it. With that
+route winning, all general IPv4 internet traffic (not just the `10.11.96.x`
+subnet, which is a separate, unaffected route) silently failed instead of
+falling back to WiFi — including a fresh NTP sync, since bench WiFi is the
+one with real internet access (aircraft WiFi never has internet, per
+CLAUDE.md's "Host access" section).
+
+Fixed by giving `eth1`'s default route a *higher* metric than WiFi's, so
+WiFi keeps winning whenever it's actually connected:
+
+```
+sudo nmcli connection modify USB2-Ethernet ipv4.route-metric 700
+sudo nmcli connection up USB2-Ethernet
+```
+
+This is safe in both places: on the bench, WiFi (metric 600) wins for
+general traffic regardless of what's plugged into `eth1`. In flight,
+`wlan0` isn't connected to anything (the Pi doesn't join the aircraft's own
+WiFi, and there's no ground WiFi in the air), so `eth1`'s default route is
+the only one available and gets used regardless of its metric value.
+Confirmed both cases on ucatsb: with the laptop on `eth1`, `ip route get
+8.8.8.8` and a live ping/curl all correctly went out via `wlan0`, while
+`eth1`'s default route and the `10.11.96.0/24` subnet route remained
+present in the table (just deprioritized) for when the aircraft router
+actually answers.
 
 Install the dispatcher script on the Pi:
 
