@@ -344,7 +344,27 @@ class DisplayPanel(QWidget):
         jack.write_digital({dig: 0})
 
     def sequence_run(self):
-        self.sequence_idle() if self.sequence_button.isChecked() else self.sequence_start()
+        # Qt already toggled sequence_button's checked state before this handler ran.
+        if self.sequence_button.isChecked():
+            if self._confirm("Stop Sequence", "Stop the cal/air sequence?", "Stop"):
+                self.sequence_idle()
+            else:
+                self.sequence_button.setChecked(False)
+        else:
+            if self._confirm("Start Sequence", "Start the cal/air sequence?", "Start"):
+                self.sequence_start()
+            else:
+                self.sequence_button.setChecked(True)
+
+    def _confirm(self, title, text, accept_label):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle(title)
+        msg.setText(text)
+        msg.addButton("Cancel", QMessageBox.RejectRole)
+        accept_button = msg.addButton(accept_label, QMessageBox.AcceptRole)
+        msg.exec_()
+        return msg.clickedButton() == accept_button
 
     def sequence_start(self):
         logger.info("Cal/air sequence started")
