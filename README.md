@@ -1,6 +1,6 @@
 # UCATS-B
 
-Airborne data acquisition for the UCATS-B atmospheric sampling instrument package. UCATS-B runs on an Ubuntu laptop in the aircraft cabin, reads the instrument suite over USB-serial and a LabJack T4, displays live values to the operator, writes a hourly-rotated CSV log, and broadcasts UDP telemetry to the aircraft's MTS and to ground stations.
+Airborne data acquisition for the UCATS-B atmospheric sampling instrument package. UCATS-B runs on a Raspberry Pi (hostname `ucatsb`, Raspberry Pi OS/Debian, arm64) aboard the aircraft, reads the instrument suite over USB-serial and a LabJack T4, displays live values to the operator full-screen during flight, writes an hourly-rotated CSV log, and broadcasts UDP telemetry to the aircraft's MTS and to ground stations.
 
 ## Hardware
 
@@ -32,7 +32,7 @@ python csv_plotter.py             # standalone plot tool (uses config-plot.yaml)
 
 Set `sim_mode: true` per device in [config.yaml](config.yaml) to run without hardware — each driver generates synthetic data.
 
-On the aircraft Ubuntu host, the launchers in [desktop/](desktop/) (`ucats-b.desktop`, `plotter.desktop`, `telem.desktop`) are symlinked to the user's Desktop.
+On `ucatsb`, the launchers in [desktop/](desktop/) (`ucats-b.desktop`, `plotter.desktop`, `telem.desktop`) are symlinked to the user's Desktop.
 
 ## Operator workflow
 
@@ -82,3 +82,11 @@ Logs are archived alongside CSVs by `flightmv` / `calmv` (the glob covers rotate
 - [telem-config.yaml](telem-config.yaml) — UDP telemetry recipients and per-payload variable lists. The `mts:` block targets the aircraft MTS; the `data:` block fans out to ground stations. Lab-test, Ellington, and remote IPs are kept as inline alternates — comment/uncomment rather than editing values.
 - [cals.yaml](cals.yaml) — calibration cylinder concentrations (CO2, CH4, N2O, CO).
 - [config-plot.yaml](config-plot.yaml) — windows for the standalone CSV plotter.
+
+## Network and host access
+
+`ucatsb` has three interfaces: `eth1` (USB-to-Ethernet) is the wired link to the aircraft's `10.11.96.x` network in flight; `eth0` is typically used for a direct ground-checkout laptop; `wlan0` is for lab/ground WiFi. See [network/README.md](network/README.md) for how the `eth1` default route to the aircraft gateway is kept persistent (and why it must lose to WiFi on the bench but always win in flight), plus the NetworkManager dispatcher script that backstops it.
+
+On the aircraft/lab WiFi, `ucatsb` is reachable via mDNS as `ucatsb.local`; SSH in as `ucats@ucatsb.local`. RealVNC Server is provisioned for graphical access — use RealVNC Viewer, not macOS's built-in Screen Sharing.
+
+A handful of quick diagnostic shortcuts live at the repo root (`t0`-`t3`, symlinked from `~/bin/` on `ucatsb` for use from any shell): NTP sync status, pings to the aircraft and building-994 gateways, and a live UDP telemetry watch via `strace`.
