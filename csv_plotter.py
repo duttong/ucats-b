@@ -115,7 +115,8 @@ class CSVPlotter(QMainWindow):
         self.controls_layout.addLayout(controls_layout)
 
         self.statistics_label = QLabel("Window Stats: ")
-        self.statistics_label.setStyleSheet(f"padding: 2px; background-color: {self.c_statsline};")
+        self.statistics_label.setStyleSheet(f"padding: 2px; font-size: 13px; background-color: {self.c_statsline};")
+        self.statistics_label.setWordWrap(True)
         self.controls_layout.addWidget(self.statistics_label)
 
         self.layout.addWidget(self.controls_widget)
@@ -220,14 +221,17 @@ class CSVPlotter(QMainWindow):
             
     def update_statistics(self, event=None):
         """
-        Update the mean, standard deviation, and count (N) based on the visible data within the x-axis and y-axis limits.
+        Update the mean and standard deviation for all four plotted variables,
+        based on the visible x-axis (time) range and each variable's own
+        y-axis (left or right) limits.
         """
         if self.data is None or 'datetime' not in self.data.columns or self.ax is None:
             return
 
-        # Get the current x-axis and y-axis limits
+        # Get the current x-axis and both y-axis limits
         xlim = self.ax.get_xlim()
-        ylim = self.ax.get_ylim()
+        ylim_left = self.ax.get_ylim()
+        ylim_right = self.ax2.get_ylim()
 
         # Convert x-axis limits to pandas.Timestamp and ensure they are tz-naive
         start_time = pd.Timestamp(mdates.num2date(xlim[0])).tz_localize(None)
@@ -239,44 +243,29 @@ class CSVPlotter(QMainWindow):
         # Filter data within the visible range of x-axis (time)
         time_mask = (self.data['datetime'] >= start_time) & (self.data['datetime'] <= end_time)
 
-        # Get selected variables
-        variable_1 = self.variable_combo_1.currentText()
-        variable_2 = self.variable_combo_2.currentText()
+        def variable_stats(variable, ylim):
+            if not variable or variable not in self.data.columns:
+                return None
+            y_mask = (self.data[variable] >= ylim[0]) & (self.data[variable] <= ylim[1])
+            visible_data = self.data.loc[time_mask & y_mask, variable]
+            if visible_data.empty:
+                return None
+            return f"<b>{variable}</b>: {visible_data.mean():.1f} ± {visible_data.std():.1f}"
 
-        # Calculate statistics for each variable, considering the y-axis range
+        variables = [
+            (self.variable_combo_1.currentText(), ylim_left),
+            (self.variable_combo_2.currentText(), ylim_left),
+            (self.variable_combo_3.currentText(), ylim_right),
+            (self.variable_combo_4.currentText(), ylim_right),
+        ]
+
         stats = []
+        for variable, ylim in variables:
+            text = variable_stats(variable, ylim)
+            if text:
+                stats.append(text)
 
-        if variable_1 in self.data.columns:
-            # Further filter based on y-axis limits for variable_1
-            y_mask_1 = (self.data[variable_1] >= ylim[0]) & (self.data[variable_1] <= ylim[1])
-            variable_1_mask = time_mask & y_mask_1
-            visible_data_1 = self.data.loc[variable_1_mask, variable_1]
-
-            if not visible_data_1.empty:
-                mean_1 = visible_data_1.mean()
-                std_1 = visible_data_1.std()
-                count_1 = visible_data_1.count()
-                stats.append(f"Window Stats: <b>{variable_1}</b>: {mean_1:.2f} ± {std_1:.2f}, N = {count_1}")
-            else:
-                stats.append("Window Stats: ")
-                #stats.append(f"<b>{variable_1}</b>: Mean = NaN, Std Dev = NaN, N = 0")
-
-        if variable_2 in self.data.columns:
-            # Further filter based on y-axis limits for variable_2
-            y_mask_2 = (self.data[variable_2] >= ylim[0]) & (self.data[variable_2] <= ylim[1])
-            variable_2_mask = time_mask & y_mask_2
-            visible_data_2 = self.data.loc[variable_2_mask, variable_2]
-
-            if not visible_data_2.empty:
-                mean_2 = visible_data_2.mean()
-                std_2 = visible_data_2.std()
-                count_2 = visible_data_2.count()
-                stats.append(f"<b>{variable_2}</b>: {mean_2:.2f} ± {std_2:.2f}, N = {count_2}")
-            else:
-                stats.append("")
-                #stats.append(f"<b>{variable_2}</b>: Mean = NaN, Std Dev = NaN, N = 0")
-
-        self.statistics_label.setText(" &nbsp;&nbsp;&nbsp;&nbsp; ".join(stats) if stats else "No data in view")   
+        self.statistics_label.setText("Window Stats: " + " | ".join(stats) if stats else "Window Stats: ")
 
     def select_new_file(self):
         # Open file dialog for user to select a new file
