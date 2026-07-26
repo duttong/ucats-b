@@ -345,6 +345,7 @@ class DisplayPanel(QWidget):
         self.sequence_idle() if self.sequence_button.isChecked() else self.sequence_start()
 
     def sequence_start(self):
+        logger.info("Cal/air sequence started")
         self.sequence_event.clear()
         self.sequence_button.setChecked(False)
         self.sequence_button.setStyleSheet(
@@ -382,6 +383,7 @@ class DisplayPanel(QWidget):
 
         self.sequence_button.setText(
             f"Running Sequence: {self.sequence_label} ({self.sequence_remaining}s)")
+        logger.info(f"Cal/air sequence advanced to {self.sequence_label} ({self.sequence_remaining}s)")
 
     def _sequence_tick(self):
         if self.sequence_event.is_set():
@@ -395,6 +397,7 @@ class DisplayPanel(QWidget):
                 f"Running Sequence: {self.sequence_label} ({self.sequence_remaining}s)")
 
     def sequence_idle(self):
+        logger.info("Cal/air sequence set to idle")
         self.sequence_timer.stop()
         self.sequence_event.set()
         self.air()
