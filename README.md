@@ -89,4 +89,4 @@ Logs are archived alongside CSVs by `flightmv` / `calmv` (the glob covers rotate
 
 On the aircraft/lab WiFi, `ucatsb` is reachable via mDNS as `ucatsb.local`; SSH in as `ucats@ucatsb.local`. RealVNC Server is provisioned for graphical access — use RealVNC Viewer, not macOS's built-in Screen Sharing.
 
-A handful of quick diagnostic shortcuts live at the repo root (`t0`-`t3`, symlinked from `~/bin/` on `ucatsb` for use from any shell): NTP sync status, pings to the aircraft and building-994 gateways, and a live UDP telemetry watch via `strace`.
+A handful of quick diagnostic shortcuts live at the repo root (`t0`-`t4`, symlinked from `~/bin/` on `ucatsb` for use from any shell): NTP sync status, pings to the aircraft and building-994 gateways, a live UDP telemetry watch via `strace`, and the routing table.
