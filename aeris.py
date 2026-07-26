@@ -50,7 +50,7 @@ class Aeris:
         elif inst_num == 3:
             # CH4 instrument
             self.variables_org = [
-                "Unused_0", "P_mbars", "T_gas", "T_ambient", "T_TEC", "Unused_1",
+                "Unused_0", "P_mbars", "T_gas", "T_TEC", "T_ambient", "Unused_1",
                 "Unused_2", "CH4_ppb", "H2O_ppm", "T_TEC_Sink", "Unused_3"]
             self.variables = self.variables_org + ['CH4c_ppb', 'H2Oc_ppm']
 
