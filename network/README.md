@@ -57,16 +57,34 @@ sudo nmcli connection modify USB2-Ethernet ipv4.route-metric 700
 sudo nmcli connection up USB2-Ethernet
 ```
 
-This is safe in both places: on the bench, WiFi (metric 600) wins for
-general traffic regardless of what's plugged into `eth1`. In flight,
-`wlan0` isn't connected to anything (the Pi doesn't join the aircraft's own
-WiFi, and there's no ground WiFi in the air), so `eth1`'s default route is
-the only one available and gets used regardless of its metric value.
-Confirmed both cases on ucatsb: with the laptop on `eth1`, `ip route get
-8.8.8.8` and a live ping/curl all correctly went out via `wlan0`, while
-`eth1`'s default route and the `10.11.96.0/24` subnet route remained
-present in the table (just deprioritized) for when the aircraft router
-actually answers.
+This is safe on the bench: WiFi (metric 600) wins for general traffic
+regardless of what's plugged into `eth1`. Confirmed on ucatsb: with the
+laptop on `eth1`, `ip route get 8.8.8.8` and a live ping/curl all correctly
+went out via `wlan0`, while `eth1`'s default route and the `10.11.96.0/24`
+subnet route remained present in the table (just deprioritized) for when
+the aircraft router actually answers.
+
+Metric alone isn't enough for flight, though: `wlan0` *does* get connected
+in the air, to one of the onboard Aeris analyzers' own WiFi (`AerisUltra*`
+SSIDs, saved profiles from occasionally checking instrument status over
+VNC) — it's not idle the way "no ground WiFi in the air" first suggested.
+Since those are ordinary DHCP connections (`ipv4.route-metric: -1`, i.e.
+NM's default ~600), one of them winning a metric race against `eth1` was
+still possible. `eth1` must always be the priority in flight, full stop,
+so instead of relying on metric ordering here too, `ipv4.never-default` is
+set to `yes` on all three `AerisUltra1001xx/1007xx/1013xx` profiles —
+structurally prevents them from ever supplying the default route,
+regardless of metric or of `eth1`'s state:
+
+```
+sudo nmcli connection modify AerisUltra100148 ipv4.never-default yes
+sudo nmcli connection modify AerisUltra100740 ipv4.never-default yes
+sudo nmcli connection modify AerisUltra101362 ipv4.never-default yes
+```
+
+Ground/lab networks (`ESPO-SARP1`, `ESPO`, `NOAA_Guest`, `NOAA_Secure`) are
+left alone (`ipv4.never-default: no`) since WiFi should stay primary on the
+bench when connected to one of those.
 
 Install the dispatcher script on the Pi:
 
