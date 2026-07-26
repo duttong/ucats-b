@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Watching UDP telemetry sends (quick check)"
+~/code/udp-check.sh 5

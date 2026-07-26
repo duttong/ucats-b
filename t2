@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Pinging building 994 gateway"
+ping -c 3 10.16.101.1

@@ -1,0 +1,3 @@
+#!/bin/bash
+timedatectl show-timesync -p ServerName -p ServerAddress
+timedatectl status
