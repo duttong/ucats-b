@@ -128,9 +128,11 @@ class DisplayPanel(QWidget):
         layout.addLayout(grid)
 
         # === Buttons Section ===
-        self.sequence_button = QPushButton("Idle")
-        self.sequence_button.setStyleSheet(f'{self.button_font}')
+        self.sequence_button = QPushButton("Sequence Idle")
+        self.sequence_button.setStyleSheet(
+            f"background-color: LightGray; color: Black; border: 1px solid #999; {self.button_font}")
         self.sequence_button.setCheckable(True)
+        self.sequence_button.setChecked(True)
         self.sequence_button.clicked.connect(self.sequence_run)
         layout.addWidget(self.sequence_button)
 
