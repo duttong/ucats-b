@@ -16,7 +16,7 @@ The runtime venv is `.venv/` and PyQt5 is *not* installed via pip — it is syml
 - `./calmv` — copy current `data/*.csv` and `data/*.log` into `data/cals/<YYYYMMDD>/`
 - `./flightmv` — same, into `data/flights/<YYYYMMDD>/`
 - `./cleanup` — delete `data/ucatsb*.csv` and `data/*.log` (run *only* after `calmv`/`flightmv`)
-- `t0`-`t4` — quick diagnostic shortcuts on ucatsb (`~/bin/t*` symlinked to these repo files in `~/code`): `t0` NTP sync server + `timedatectl status`, `t1` ping the aircraft gateway (`10.11.96.1`), `t2` ping the building 994 gateway (`10.16.101.1`), `t3` watch UDP telemetry `sendto()` calls from a running `instrument.py` for a few seconds (absorbs what was `udp-check.sh`), `t4` dump the routing table (`ip r`)
+- `t0`-`t4` — quick diagnostic shortcuts on ucatsb (`~/bin/t*` symlinked to these repo files in `~/code`): `t0` NTP sync server + `timedatectl status`, `t1` dump the routing table (`ip r`), `t2` ping the aircraft gateway (`10.11.96.1`), `t3` ping the building 994 gateway (`10.16.101.1`), `t4` watch UDP telemetry `sendto()` calls from a running `instrument.py` for a few seconds (absorbs what was `udp-check.sh`)
 
 There is no test suite, lint config, or CI in this repo. Devices can be exercised without hardware by setting `sim_mode: true` in `config.yaml` per device — each device class generates synthetic data in that mode.
 
