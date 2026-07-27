@@ -237,9 +237,8 @@ class Aeris:
     
     def calibrated(self, data_dict):
 
-        # calibrations from 20250208
         if self.inst_num == 1:
-            # old inst
+            # old inst — calibrations from 20250208
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
             n2o_corr = (n2o*1.0363*1000 - 6.2)/1000
             co = float(data_dict.get(f'{self.prefix}CO_ppb', float('nan')))
@@ -247,18 +246,22 @@ class Aeris:
             data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
             data_dict[f'{self.prefix}COc_ppb'] = co_corr
         elif self.inst_num == 3:
-            # CH4 instrument — calibration TBD, identity for now
+            # CH4 instrument — calibrations from 20260725
             ch4 = float(data_dict.get(f'{self.prefix}CH4_ppb', float('nan')))
-            data_dict[f'{self.prefix}CH4c_ppb'] = ch4
+            ch4_corr = (ch4*0.9529 + 3.696)
+            data_dict[f'{self.prefix}CH4c_ppb'] = ch4_corr
             # H2O calibration TBD, identity for now
             h2o = float(data_dict.get(f'{self.prefix}H2O_ppm', float('nan')))
             data_dict[f'{self.prefix}H2Oc_ppm'] = h2o
         else:
-            # new inst
+            # new inst — calibrations from 20260725
+            # (commented-out lines are the previous 20250208 calibrations)
             n2o = float(data_dict.get(f'{self.prefix}N2O_ppb', float('nan')))
-            n2o_corr = (n2o*1.0088*1000 - 14.0)/1000
+            #n2o_corr = (n2o*1.0088*1000 - 14.0)/1000
+            n2o_corr = (n2o*1.0143*1000 - 12.8)/1000
             co2 = float(data_dict.get(f'{self.prefix}CO2_ppm', float('nan')))
-            co2_corr = co2*1.029 - 3.9
+            #co2_corr = co2*1.029 - 3.9
+            co2_corr = co2*1.0306 - 3.84
             data_dict[f'{self.prefix}N2Oc_ppb'] = n2o_corr
             data_dict[f'{self.prefix}CO2c_ppm'] = co2_corr
         return data_dict
