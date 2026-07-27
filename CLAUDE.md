@@ -83,7 +83,7 @@ The `flightmv` / `calmv` / `cleanup` scripts use the `*.log*` glob, which catche
 
 On the aircraft/lab WiFi, the Pi is reachable via mDNS as `ucatsb.local`; SSH in as `ucats@ucatsb.local` (not `ucatsb` — that's the hostname, not the username). RealVNC Server is provisioned on the Pi for graphical access — use RealVNC Viewer, not macOS's built-in Screen Sharing, which isn't compatible with RealVNC's default auth scheme.
 
-The Pi has three network interfaces: `eth0` is unused/down; `eth1` (a USB-to-Ethernet adapter) is the wired connection to the aircraft's onboard network (`10.11.96.x`, same range as the MTS box in `telem-config.yaml` — the Pi gets `10.11.96.145` there); and `wlan0` (WiFi) is for lab/ground access, which is what `ucatsb.local` mDNS resolution uses.
+The Pi has three network interfaces: `eth0` is normally unused/down, but comes up at `10.1.10.5/24` (NetworkManager profile `ucats_local`) during preflight checkout when a laptop is connected directly to that NIC; `eth1` (a USB-to-Ethernet adapter) is the wired connection to the aircraft's onboard network (`10.11.96.x`, same range as the MTS box in `telem-config.yaml` — the Pi gets `10.11.96.145` there); and `wlan0` (WiFi) is for lab/ground access, which is what `ucatsb.local` mDNS resolution uses.
 
 The aircraft's `10.11.96.x` network (both the wired side and its own WiFi) has **no DHCP** — every device needs a static IP assigned manually, and there's no central registry, so keep this list current to avoid collisions:
 - `10.11.96.1` — aircraft router (NTP source)
@@ -93,6 +93,17 @@ The aircraft's `10.11.96.x` network (both the wired side and its own WiFi) has *
 - `10.11.96.131` — MTS system (receives `mts:` telemetry from `telem-config.yaml`)
 
 The aircraft WiFi itself has no internet access — it only routes to devices on `10.11.96.x` — unlike the lab/ground WiFi.
+
+#### Routing: WiFi vs. wired
+
+NetworkManager gives `wlan0`'s default route a lower metric (600) than `eth1`'s (700), so `wlan0` wins for any destination that isn't a directly-connected subnet — including, unexpectedly, the building 994 gateway (`10.16.101.1`, reachable via `t3`). With WiFi up, traffic to `10.16.101.1` went out over `wlan0` and died at the lab WiFi's router, which has no route to that network; with WiFi down, the only remaining default route (`eth1` → `10.11.96.1`) worked, since the aircraft gateway can reach `10.16.101.x` while parked on the ground. Confirmed and fixed 2026-07-27 by adding a persistent static route so `10.16.101.0/24` always goes via `eth1` regardless of WiFi state:
+
+```
+sudo nmcli connection modify "USB2-Ethernet" +ipv4.routes "10.16.101.0/24 10.11.96.1"
+sudo nmcli connection up "USB2-Ethernet"
+```
+
+This is stored in the `USB2-Ethernet` connection profile (`ipv4.routes`), so it survives reboots. `wlan0` still wins the general default route for every other destination outside `10.11.96.0/24` and `10.16.101.0/24` — this only carves out the one subnet. Reapplying the connection profile briefly flaps the link (a route shows `linkdown` for a couple seconds), so expect a dropped packet or two if you re-run `nmcli connection up` on `USB2-Ethernet` while testing.
 
 ### Clock and time sync
 
