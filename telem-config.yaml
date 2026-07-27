@@ -61,3 +61,5 @@ data:
     - w_H2O_B
     - w_H2O_lg
     - w_H2Obest
+    - w_t
+    - w_p
