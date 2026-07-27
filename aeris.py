@@ -248,7 +248,7 @@ class Aeris:
         elif self.inst_num == 3:
             # CH4 instrument — calibrations from 20260725
             ch4 = float(data_dict.get(f'{self.prefix}CH4_ppb', float('nan')))
-            ch4_corr = (ch4*0.9529 + 3.696)
+            ch4_corr = (ch4*0.95289*1000 + 3.6964)/1000
             data_dict[f'{self.prefix}CH4c_ppb'] = ch4_corr
             # H2O calibration TBD, identity for now
             h2o = float(data_dict.get(f'{self.prefix}H2O_ppm', float('nan')))
