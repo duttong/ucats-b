@@ -287,6 +287,8 @@ class DisplayPanel(QWidget):
     def pumps_on(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
+        # keep the toggle state in sync for programmatic callers (at_altitude)
+        self.pumps_tog.setChecked(True)
         self.pumps_tog.setText("Pumps On")
         self.pumps_tog.setStyleSheet(
             f"background-color: #99FF99; color: black; border: 1px solid #CC9999; {self.button_font}")  
@@ -295,6 +297,8 @@ class DisplayPanel(QWidget):
     def pumps_off(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
+        # keep the toggle state in sync for programmatic callers (below_altitude, shutdown)
+        self.pumps_tog.setChecked(False)
         self.pumps_tog.setText("Pumps Off")
         self.pumps_tog.setStyleSheet(
             f"background-color: #FF9999; color: black; border: 1px solid #CC9999; {self.button_font}")  

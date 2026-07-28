@@ -377,6 +377,7 @@ class TDL_package(QMainWindow):
         logger.info("Plane has reached altitude.")
         self.alt_low_event.clear()
         self.alt_high_event.set()
+        self.display_panel.pumps_on()
         self.display_panel.sequence_start()
 
     def below_altitude(self):
