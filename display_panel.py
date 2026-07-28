@@ -25,11 +25,24 @@ class PilotIndicator(QLabel):
         self.setStyleSheet(f"background-color: {color}; border: 1px solid black;")
 
 class DisplayPanel(QWidget):
+    CAL_DURATION_STEP = 5           # seconds per button press
+    CAL_DURATION_MIN = 5
+    CAL_DURATION_MAX = 120
+    CAL_DURATION_LOCKOUT_LEAD = 5   # lock edits this many seconds before a cal starts
+
     def __init__(self, config_file, devices=None):
         super().__init__()
         self.config_file = config_file
         self.config = self.load_config(config_file)
         self.devices = devices
+        # Runtime cal duration. Seeded from config here and never re-read from it, so an
+        # operator's change sticks for every following cal until the app restarts.
+        # -/+ edit cal_duration_pending; nothing reaches the sequence until Save, so a
+        # stray button press can't change what the next cal actually runs.
+        self.cal_duration = int(float(self.config['triggers'].get('cal_duration', 40)))
+        self.cal_duration_pending = None
+        self.cal_duration_locked = False
+        logger.info(f"Cal duration initialized to {self.cal_duration}s from config")
         self.sequence_event = threading.Event()
         self.sequence_timer = QTimer()
         self.sequence_timer.timeout.connect(self._sequence_tick)
@@ -124,8 +137,74 @@ class DisplayPanel(QWidget):
                 self.data_labels[f"{device_name}_{prefix}{var}"] = value_label
                 row[colinc] += 1
 
-        # Add the device grid below the date/time and pilot indicator
+        # === Cal duration adjuster ===
+        cal_dur_label = QLabel("   cal_duration: ")   # leading spaces match the var labels
+        cal_dur_label.setFont(QFont('Arial', 14, QFont.Bold))
+        cal_dur_label.setStyleSheet("color: black;")
+
+        self.cal_duration_value = QLabel(f"{self.cal_duration} s")
+        self.cal_duration_value.setFont(QFont('Arial', 14))
+        self.cal_duration_value.setStyleSheet("color: #11e;")
+        self.cal_duration_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        # Pre-size to the widest string this label can ever hold ("120 → 120 s"), so
+        # switching between committed and pending text can't resize anything around it.
+        fm = self.cal_duration_value.fontMetrics()
+        advance = getattr(fm, 'horizontalAdvance', fm.width)
+        self.cal_duration_value.setFixedWidth(
+            advance(f"{self.CAL_DURATION_MAX} → {self.CAL_DURATION_MAX} s") + 8)
+
+        # The :disabled rule is required -- a flat background-color overrides Qt's own
+        # greyed-out rendering, so a locked button would otherwise still look pressable.
+        disabled_style = "QPushButton:disabled {background-color: #E0E0E0; color: #909090;}"
+        cal_dur_style = (
+            f"QPushButton {{background-color: #FFCCCC; color: black;"
+            f" border: 1px solid #CC9999; {self.button_font}}}{disabled_style}")
+        cal_save_style = (
+            f"QPushButton {{background-color: DarkSeaGreen; color: black;"
+            f" border: 1px solid #CC9999; {self.button_font}}}{disabled_style}")
+
+        cal_dur_layout = QHBoxLayout()
+        self.cal_dur_minus = QPushButton("−")
+        self.cal_dur_minus.setStyleSheet(cal_dur_style)
+        self.cal_dur_minus.clicked.connect(
+            lambda: self.adjust_cal_duration(-self.CAL_DURATION_STEP))
+
+        self.cal_dur_plus = QPushButton("+")
+        self.cal_dur_plus.setStyleSheet(cal_dur_style)
+        self.cal_dur_plus.clicked.connect(
+            lambda: self.adjust_cal_duration(self.CAL_DURATION_STEP))
+
+        cal_dur_layout.addWidget(self.cal_dur_minus)
+        cal_dur_layout.addWidget(self.cal_dur_plus)
+
+        cal_commit_layout = QHBoxLayout()
+        self.cal_dur_save = QPushButton("Save")
+        self.cal_dur_save.setStyleSheet(cal_save_style)
+        self.cal_dur_save.clicked.connect(self.save_cal_duration)
+
+        self.cal_dur_cancel = QPushButton("Cancel")
+        self.cal_dur_cancel.setStyleSheet(cal_dur_style)
+        self.cal_dur_cancel.clicked.connect(self.cancel_cal_duration)
+
+        cal_commit_layout.addWidget(self.cal_dur_save)
+        cal_commit_layout.addWidget(self.cal_dur_cancel)
+
+        self._refresh_cal_duration()   # Save/Cancel start disabled -- nothing pending yet
+
+        # Sit in the labjack column (cols 4-5), bottom-aligned with the longest device
+        # column so the three rows land beside its last variables rather than below
+        # everything -- no dead space to the left of the block. max(row[4], ...) keeps
+        # it clear of the labjack variables if that column ever grows.
+        cal_row = max(row[4], max(row) - 3)
+        grid.addWidget(cal_dur_label, cal_row, 4, alignment=Qt.AlignLeft)
+        grid.addWidget(self.cal_duration_value, cal_row, 5, alignment=Qt.AlignRight)
+        grid.addLayout(cal_dur_layout, cal_row + 1, 4, 1, 2)
+        grid.addLayout(cal_commit_layout, cal_row + 2, 4, 1, 2)
+
+        # Add the device grid below the date/time and pilot indicator, then let any
+        # leftover height fall between the grid and the Sequence button.
         layout.addLayout(grid)
+        layout.addStretch(1)
 
         # === Buttons Section ===
         self.sequence_button = QPushButton("Sequence Idle")
@@ -306,6 +385,71 @@ class DisplayPanel(QWidget):
             f"background-color: #FF9999; color: black; border: 1px solid #CC9999; {self.button_font}")  
         jack.write_digital({dig: 0})
 
+    def adjust_cal_duration(self, delta):
+        """ Step the *pending* cal duration by delta seconds, clamped to the allowed range.
+            Nothing reaches the sequence until save_cal_duration(). """
+        if self.cal_duration_locked:
+            return
+        base = self.cal_duration if self.cal_duration_pending is None else self.cal_duration_pending
+        new = min(max(base + delta, self.CAL_DURATION_MIN), self.CAL_DURATION_MAX)
+        if new == base:
+            logger.info(f"Cal duration unchanged at {base}s "
+                        f"(limit {self.CAL_DURATION_MIN}-{self.CAL_DURATION_MAX}s)")
+            return
+        # Stepping back onto the committed value clears the pending edit entirely.
+        self.cal_duration_pending = None if new == self.cal_duration else new
+        self._refresh_cal_duration()
+
+    def save_cal_duration(self):
+        """ Commit the pending cal duration. Applies to every cal that follows until
+            changed again or the app restarts. """
+        if self.cal_duration_pending is None:
+            return
+        old, new = self.cal_duration, self.cal_duration_pending
+        self.cal_duration = new
+        self.cal_duration_pending = None
+        self._refresh_cal_duration()
+        logger.info(f"Cal duration changed: {old}s -> {new}s (applies to all following cals)")
+
+    def cancel_cal_duration(self):
+        """ Discard the pending cal duration and go back to the committed value. """
+        if self.cal_duration_pending is None:
+            return
+        logger.info(f"Cal duration edit cancelled ({self.cal_duration_pending}s discarded), "
+                    f"staying at {self.cal_duration}s")
+        self.cal_duration_pending = None
+        self._refresh_cal_duration()
+
+    def _refresh_cal_duration(self):
+        """ Redraw the readout and set which of the four buttons are pressable. """
+        pending = self.cal_duration_pending
+        if pending is None:
+            self.cal_duration_value.setText(f"{self.cal_duration} s")
+            self.cal_duration_value.setStyleSheet("color: #11e;")
+        else:
+            self.cal_duration_value.setText(f"{self.cal_duration} → {pending} s")
+            self.cal_duration_value.setStyleSheet("color: #d35400; font-weight: bold;")
+
+        unlocked = not self.cal_duration_locked
+        self.cal_dur_minus.setEnabled(unlocked)
+        self.cal_dur_plus.setEnabled(unlocked)
+        self.cal_dur_save.setEnabled(unlocked and pending is not None)
+        self.cal_dur_cancel.setEnabled(unlocked and pending is not None)
+
+    def _set_cal_duration_enabled(self, enabled, reason=""):
+        """ Lock/unlock the cal duration controls. Idempotent so the per-tick calls from
+            _sequence_tick don't flood the log. Locking discards any unsaved edit, so a
+            value staged and forgotten can never be committed later against stale intent. """
+        if self.cal_duration_locked != enabled:
+            return
+        self.cal_duration_locked = not enabled
+        if not enabled and self.cal_duration_pending is not None:
+            logger.warning(f"Unsaved cal duration change ({self.cal_duration_pending}s) discarded "
+                           f"at lock; staying at {self.cal_duration}s")
+            self.cal_duration_pending = None
+        self._refresh_cal_duration()
+        logger.info(f"Cal duration control {'unlocked' if enabled else 'locked'}{reason}")
+
     def sol_cals(self):
         self.cal1() if self.sol1.isChecked() else self.cal0()
 
@@ -336,8 +480,9 @@ class DisplayPanel(QWidget):
         dig = jack.get_labjack_address('sol_aircal')
         self.sol2.setText("Cal")
         self.sol2.setStyleSheet(
-            f"background-color: DodgerBlue; color: White; border: 1px solid #CC9999; {self.button_font}")  
+            f"background-color: DodgerBlue; color: White; border: 1px solid #CC9999; {self.button_font}")
         self.sol2.setChecked(False)
+        self._set_cal_duration_enabled(False, " (cal gas flowing)")
         jack.write_digital({dig: 1})
 
     def air(self):
@@ -345,8 +490,9 @@ class DisplayPanel(QWidget):
         dig = jack.get_labjack_address('sol_aircal')
         self.sol2.setText("Air")
         self.sol2.setStyleSheet(
-            f"background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999; {self.button_font}")  
+            f"background-color: DarkSeaGreen; color: black; border: 1px solid #CC9999; {self.button_font}")
         self.sol2.setChecked(True)
+        self._set_cal_duration_enabled(True)
         jack.write_digital({dig: 0})
 
     def sequence_run(self):
@@ -373,7 +519,8 @@ class DisplayPanel(QWidget):
         return msg.clickedButton() == accept_button
 
     def sequence_start(self):
-        logger.info("Cal/air sequence started")
+        air_s = int(float(self.config['triggers'].get('air_duration', 300)))
+        logger.info(f"Cal/air sequence started (cal {self.cal_duration}s, air {air_s}s)")
         self.sequence_event.clear()
         self.sequence_button.setChecked(False)
         self.sequence_button.setStyleSheet(
@@ -384,7 +531,7 @@ class DisplayPanel(QWidget):
 
     def _sequence_advance(self):
         air_s = int(float(self.config['triggers'].get('air_duration', 300)))
-        cal_s = int(float(self.config['triggers'].get('cal_duration', 20)))
+        cal_s = self.cal_duration   # operator-adjustable, read fresh on every transition
 
         self.sequence_step = (self.sequence_step + 1) % 4
 
@@ -421,6 +568,11 @@ class DisplayPanel(QWidget):
         if self.sequence_remaining <= 0:
             self._sequence_advance()
         else:
+            # Every air step is followed by a cal step, so no "is the next step a cal?"
+            # test is needed -- during a cal step this is already locked and no-ops.
+            if self.sequence_remaining <= self.CAL_DURATION_LOCKOUT_LEAD:
+                self._set_cal_duration_enabled(
+                    False, f" (cal starts in {self.CAL_DURATION_LOCKOUT_LEAD}s)")
             self.sequence_button.setText(
                 f"Running Sequence: {self.sequence_label} ({self.sequence_remaining}s)")
 
