@@ -50,7 +50,10 @@ class DisplayPanel(QWidget):
         self.sequence_remaining = 0
         self.sequence_label = ""
         self.button_font = "font-size: 16px;"
-        self.start_time = datetime.datetime.now()
+        # Elapsed time runs off a monotonic clock, not the wall clock: timesyncd steps
+        # the system time once it reaches a server after boot, and a wall-clock delta
+        # would absorb that correction and jump by hours mid-run.
+        self.start_monotonic = time.monotonic()
         self.initUI()
 
     def load_config(self, file_path='config.yaml'):
@@ -279,9 +282,9 @@ class DisplayPanel(QWidget):
         current_time = datetime.datetime.now()
         formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Calculate elapsed time
-        elapsed_time = current_time - self.start_time
-        elapsed_str = str(elapsed_time).split(".")[0]  # Remove microseconds
+        # Elapsed comes from the monotonic clock so an NTP step can't jump it.
+        elapsed_time = datetime.timedelta(seconds=int(time.monotonic() - self.start_monotonic))
+        elapsed_str = str(elapsed_time)
 
         # Use HTML formatting for different font sizes
         display_text = (
