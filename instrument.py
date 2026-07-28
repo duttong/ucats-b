@@ -404,6 +404,7 @@ def main():
     args = parser.parse_args()
 
     setup_logging(verbose=args.verbose)
+    logger.info("UCATS-B starting")
 
     app = QApplication(sys.argv)
 

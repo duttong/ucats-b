@@ -287,6 +287,7 @@ class DisplayPanel(QWidget):
     def pumps_on(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
+        logger.info("Pumps on")
         # keep the toggle state in sync for programmatic callers (at_altitude)
         self.pumps_tog.setChecked(True)
         self.pumps_tog.setText("Pumps On")
@@ -297,6 +298,7 @@ class DisplayPanel(QWidget):
     def pumps_off(self):
         jack = self.devices.get('labjack')
         dig = jack.get_labjack_address('pumps')
+        logger.info("Pumps off")
         # keep the toggle state in sync for programmatic callers (below_altitude, shutdown)
         self.pumps_tog.setChecked(False)
         self.pumps_tog.setText("Pumps Off")
