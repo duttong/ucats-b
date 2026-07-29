@@ -32,7 +32,9 @@ Each device class (`Aeris` in [aeris.py](aeris.py), `O3_2Btech` in [o3_sensor.py
 - `get_all_data()` drains the buffer and returns a list of dict rows
 - `variables` lists the column names the device produces
 
-Each tick `collect_data` drains every device, concatenates rows into `self.streams[device_name]` (a per-device DataFrame), merges all streams on `datetime` (outer join), and appends only the *last* completed row to `data/ucatsb-YYYYMMDDHH.csv`. The same row is fanned out to UDP via `Telemetry.send_data`, which sends synchronously on the GUI thread (UDP `sendto` is fast enough that this doesn't perceptibly affect the 950 ms tick). Hourly file rotation is implicit in `create_filename()`'s `%Y%m%d%H` pattern.
+Each tick `collect_data` drains every device, concatenates rows into `self.streams[device_name]` (a per-device DataFrame), merges all streams on `datetime` (outer join), and appends only the *last* completed row to `data/ucatsb-YYYYMMDDHH.csv`. The same row is fanned out to UDP via `Telemetry.send_data`, which sends synchronously on the GUI thread (UDP `sendto` is fast enough that this doesn't perceptibly affect the 950 ms tick).
+
+`create_filename()`'s `%Y%m%d%H` pattern names the file for the hour, but **files do not rotate during a run** — `self.file_path` is assigned once in `__init__` and never recomputed, so a run started at 15:58 keeps appending to `ucatsb-...15.csv` for its whole duration. Rotation only happens across restarts. Restarting inside the same clock hour reopens the existing file and appends to it (which is also why the panel's Elapsed Time can read younger than the CSV).
 
 ### Variable prefixing
 
@@ -61,13 +63,23 @@ The `pilot_off_event`, `alt_high_event`, and `alt_low_event` `threading.Event` i
 
 Both payloads are CSV rows starting with the `iwg_prefix` and an ISO-like timestamp. The IP blocks in `telem-config.yaml` carry inline comments distinguishing lab-test vs. flight vs. Ellington configurations — when changing IPs, swap the active line rather than editing values, so the alternates stay documented.
 
+**The MTS payload is gap-filled; the `data:` payload and the CSV are not.** The 2BTech O3 and Maycomm packets arrive at ~1/2 Hz, so at the 1 Hz tick every other row is `nan` for `oz_o3best`, `oz_p`, and `w_H2Obest` (measured ~53%, a strict every-other-row pattern), which MTS renders badly. `_hold_last_valid` carries the last valid value forward for every variable in the `mts:` list, expiring after `Telemetry.MTS_HOLD_SECONDS` (6 s — the normal 2 s cadence plus one missed packet). The expiry is the point: without it a dead sensor would display a frozen, plausible value indefinitely and hide the failure. On expiry the held entry is deleted so the staleness `warning` fires once per outage, not every tick. `send_data` receives a single row (`full_data.tail(1)`), so there is no history to `ffill` against — last-valid values are held as state on the `Telemetry` object. Filling happens downstream of `instrument.py`'s `to_csv`, so archived data stays raw.
+
 ### GUI and the cal/air sequence
 
 [display_panel.py](display_panel.py) builds the operator panel: per-device value readouts (driven by `display_vars:` in `config.yaml`), the pilot indicator, and buttons for `cal0`/`cal1`/`air`, pump on/off, and the cal/air sampling sequence.
 
+The header's **Elapsed Time is measured with `time.monotonic()`, not the wall clock** — `systemd-timesyncd` steps the system time once it reaches a server after boot (see *Clock and time sync*), and a `datetime.now()` delta absorbed that correction and jumped by hours mid-run. Current Time still uses `datetime.now()`, which should follow the system clock. Note this only fixes the display: data timestamps written while the clock was still wrong are a clock-setup problem, not a display one.
+
 `sequence_start` is a non-blocking state machine driven by `sequence_timer` (1 Hz `QTimer`). State is held in `sequence_step` (0–3, cycling `Cal 0 → Air → Cal 1 → Air`), `sequence_remaining` (countdown in seconds), and `sequence_label`. `_sequence_advance` sets the next step's solenoid state and label; `_sequence_tick` decrements the countdown each tick and calls `_sequence_advance` at 0. `sequence_idle` stops the timer, sets `sequence_event` (for `closeEvent` compatibility), and resets the UI. Call from anywhere on the GUI thread — e.g. the sequence button, or `at_altitude` from `check_altitude`. Don't call from a worker thread; the whole point of the state machine is to stay on the GUI thread.
 
 The earlier blocking implementation called `time.sleep` / `Event.wait` and `QApplication.processEvents()` in a `while` loop. That was deliberately avoided because mixing it with worker-thread invocations from `at_altitude` made the app unstable.
+
+`air_duration` still comes from `config.yaml` on every `_sequence_advance`, but **`cal_duration` is operator-adjustable at runtime** (to conserve cal gas in flight) via a −/+ Save/Cancel block in the labjack column. `config.yaml` seeds `self.cal_duration` once in `__init__` and is never re-read or rewritten, so a saved change sticks for every following cal — across sequence restarts and altitude cycles — until changed again or the app restarts.
+
+Edits are staged, not applied directly: −/+ move `cal_duration_pending` and nothing reaches the sequence until `save_cal_duration`, so a stray press on a panel being operated in flight can't change what the next cal runs. `cancel_cal_duration` reverts, and stepping back onto the committed value clears the pending edit entirely. The controls are locked whenever cal gas is flowing (`sol_aircal = 1`, hooked into `cals()`/`air()`) *and* from `CAL_DURATION_LOCKOUT_LEAD` (5 s) before a cal starts, checked in `_sequence_tick` — every air step is followed by a cal step, so that check needs no "is the next step a cal?" test. Locking discards any unsaved edit, so a value staged and forgotten can't be committed later against stale intent. `_set_cal_duration_enabled` is idempotent because `_sequence_tick` calls it every tick through the lead-in window; without that guard it would flood the log.
+
+Two UI details that look incidental but aren't: the readout is pre-sized with `QFontMetrics` to its widest possible string (`120 → 120 s`), because it shares a grid column with the labjack readouts and a width change there shifted every field on the panel; and the −/+/Save/Cancel styles need an explicit `QPushButton:disabled` rule, since a flat `background-color` overrides Qt's own greyed-out rendering and a locked button would still look pressable.
 
 ### Logging
 
