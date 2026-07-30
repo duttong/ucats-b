@@ -2,7 +2,7 @@ triggers:
   alt_high: 500       # less than this mbar
   alt_low: 700        # greater than this mbar
   air_duration: 300   # time in S for air sampling
-  cal_duration: 40    # time in S for cal sampling
+  cal_duration: 30    # time in S for cal sampling
 
 telemetry:
   enable: true
