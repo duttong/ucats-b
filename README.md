@@ -49,16 +49,22 @@ The operator panel shows live values per instrument, a flashing pilot-fail indic
 
 Data is written to `data/ucatsb-YYYYMMDDHH.csv`, one file per hour. After a flight or cal day:
 
-Each final row includes timing metadata that is independent of the sensor drivers:
+Each final row includes timing metadata that is independent of the sensor drivers. Think of
+`datetime` as the aircraft's adjustable clock and `monotonic_ns` as a stopwatch that NTP cannot
+reset:
 
-- `sample_id` increases once per acquisition callback.
-- `monotonic_ns` records the system's non-adjustable monotonic clock.
-- `clock_epoch` increases when wall time changes by 5 seconds or more relative to monotonic time.
-- `clock_jump_s` contains the signed wall-clock change on the first row of a new epoch.
+- `sample_id` increases by one for every final data row and preserves measurement order.
+- `monotonic_ns` records elapsed time in nanoseconds from an arbitrary starting point. Differences
+  between values are meaningful; the absolute value is not a date.
+- `clock_epoch` identifies sections separated by a detected clock change of at least 5 seconds.
+- `clock_jump_s` reports the change on the first row of a new epoch. Positive values indicate a
+  forward jump and negative values indicate a backward jump.
 
-The `datetime` column remains the observed system time for live displays and telemetry. Post-flight
-processing can use `monotonic_ns` and trustworthy UTC anchors to repair `datetime` without changing
-sample order or losing measurements during an NTP step.
+The `AcquisitionClock` does not determine which epoch has correct UTC. The `datetime` column remains
+the system time observed in flight for live displays and telemetry. During post-flight processing,
+a row with trustworthy UTC provides an anchor. Adding each row's monotonic-time difference to that
+anchor reconstructs its corrected UTC without changing sample order. A computer reboot resets the
+monotonic clock and must be treated as a separate correction segment.
 
 ```bash
 ./flightmv    # archive current data/ to data/flights/<YYYYMMDD>/

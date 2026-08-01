@@ -25,7 +25,35 @@ logger = logging.getLogger(__name__)
 
 
 class AcquisitionClock:
-    """Track acquisition order independently from the adjustable system clock."""
+    """Describe when each final data row was acquired, even if NTP changes time.
+
+    The computer supplies two different measures of time:
+
+    * Wall time is the familiar date and time written in ``datetime``. NTP or
+      GPS synchronization can move this clock forward or backward.
+    * Monotonic time behaves like a stopwatch. It advances steadily while the
+      computer is running and is not adjusted by NTP. Its zero point is
+      arbitrary, so only differences between ``monotonic_ns`` values have
+      physical meaning.
+
+    For each final CSV row, :meth:`observe` records both clocks and a sequential
+    ``sample_id``. It compares the elapsed wall time with the elapsed monotonic
+    time. If they differ by at least ``jump_threshold_seconds`` (5 seconds by
+    default), the row starts a new ``clock_epoch`` and ``clock_jump_s`` records
+    the signed discrepancy. A positive discrepancy means wall time jumped
+    forward; a negative discrepancy means it jumped backward.
+
+    The class detects and describes a clock change; it does not decide which
+    clock epoch has the correct UTC time. During post-flight processing, a row
+    with trusted UTC can be used as an anchor. Times for other rows in the same
+    uninterrupted computer run can then be reconstructed from their difference
+    in ``monotonic_ns``. A computer reboot resets the monotonic clock, so a
+    program restart is deliberately assigned a new epoch when an existing CSV
+    is resumed.
+
+    ``next_sample_id`` and ``clock_epoch`` allow acquisition to continue an
+    existing compatible CSV without repeating identifiers.
+    """
 
     def __init__(self, jump_threshold_seconds=5.0, next_sample_id=0, clock_epoch=0):
         self.jump_threshold_seconds = jump_threshold_seconds
@@ -35,6 +63,12 @@ class AcquisitionClock:
         self.previous_monotonic_ns = None
 
     def observe(self, wall_time=None, monotonic_ns=None):
+        """Return timing metadata for one final data row.
+
+        Supplying ``wall_time`` and ``monotonic_ns`` is useful for testing.
+        Normal acquisition leaves them unspecified and reads both clocks here,
+        at the beginning of the final-data collection cycle.
+        """
         wall_time = wall_time or datetime.now()
         monotonic_ns = monotonic_ns if monotonic_ns is not None else time.monotonic_ns()
         clock_jump_seconds = None
