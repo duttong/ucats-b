@@ -49,6 +49,17 @@ The operator panel shows live values per instrument, a flashing pilot-fail indic
 
 Data is written to `data/ucatsb-YYYYMMDDHH.csv`, one file per hour. After a flight or cal day:
 
+Each final row includes timing metadata that is independent of the sensor drivers:
+
+- `sample_id` increases once per acquisition callback.
+- `monotonic_ns` records the system's non-adjustable monotonic clock.
+- `clock_epoch` increases when wall time changes by 5 seconds or more relative to monotonic time.
+- `clock_jump_s` contains the signed wall-clock change on the first row of a new epoch.
+
+The `datetime` column remains the observed system time for live displays and telemetry. Post-flight
+processing can use `monotonic_ns` and trustworthy UTC anchors to repair `datetime` without changing
+sample order or losing measurements during an NTP step.
+
 ```bash
 ./flightmv    # archive current data/ to data/flights/<YYYYMMDD>/
 ./calmv       # archive current data/ to data/cals/<YYYYMMDD>/

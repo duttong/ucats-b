@@ -24,6 +24,42 @@ from telemetry import Telemetry
 logger = logging.getLogger(__name__)
 
 
+class AcquisitionClock:
+    """Track acquisition order independently from the adjustable system clock."""
+
+    def __init__(self, jump_threshold_seconds=5.0, next_sample_id=0, clock_epoch=0):
+        self.jump_threshold_seconds = jump_threshold_seconds
+        self.next_sample_id = next_sample_id
+        self.clock_epoch = clock_epoch
+        self.previous_wall_time = None
+        self.previous_monotonic_ns = None
+
+    def observe(self, wall_time=None, monotonic_ns=None):
+        wall_time = wall_time or datetime.now()
+        monotonic_ns = monotonic_ns if monotonic_ns is not None else time.monotonic_ns()
+        clock_jump_seconds = None
+
+        if self.previous_wall_time is not None:
+            wall_elapsed = (wall_time - self.previous_wall_time).total_seconds()
+            monotonic_elapsed = (monotonic_ns - self.previous_monotonic_ns) / 1_000_000_000
+            clock_error = wall_elapsed - monotonic_elapsed
+            if abs(clock_error) >= self.jump_threshold_seconds:
+                self.clock_epoch += 1
+                clock_jump_seconds = clock_error
+
+        observation = {
+            'datetime': wall_time,
+            'sample_id': self.next_sample_id,
+            'monotonic_ns': monotonic_ns,
+            'clock_epoch': self.clock_epoch,
+            'clock_jump_s': clock_jump_seconds,
+        }
+        self.next_sample_id += 1
+        self.previous_wall_time = wall_time
+        self.previous_monotonic_ns = monotonic_ns
+        return observation
+
+
 def setup_logging(verbose=False):
     """Configure root logger: rotating file at data/ucats-b.log + stdout stream."""
     log_path = "data/ucats-b.log"
@@ -122,20 +158,50 @@ class TDL_package(QMainWindow):
             ]
             self.all_variables.update(self.vars[device_name])
 
-        # Convert the set of variables to a sorted list for consistency
-        self.all_variables = ['datetime'] + sorted(self.all_variables)
+        # Final-output metadata precedes the instrument variables in the CSV.
+        self.output_metadata = [
+            'datetime', 'sample_id', 'monotonic_ns', 'clock_epoch', 'clock_jump_s'
+        ]
+        self.all_variables = self.output_metadata + sorted(self.all_variables)
 
         # Initialize the display panel
         self.display_panel = DisplayPanel(self.config_file, self.devices)
         self.setCentralWidget(self.display_panel)
 
-        # Load existing data if the CSV file already exists
+        next_sample_id = 0
+        clock_epoch = 0
+
+        # Resume sequence metadata when restarting into a compatible CSV. Start a
+        # new part if an older file has a different schema, rather than corrupting it.
         if os.path.exists(self.file_path):
-            previous_data = pd.read_csv(self.file_path, parse_dates=['datetime'])
-            self.last_saved_datetime = previous_data['datetime'].max()
-            del previous_data  # remove from memory
+            existing_columns = list(pd.read_csv(self.file_path, nrows=0).columns)
+            if existing_columns != self.all_variables:
+                previous_path = self.file_path
+                self.file_path = self.next_part_filename(self.file_path)
+                logger.warning(
+                    f"Output schema differs from {previous_path}; writing {self.file_path}"
+                )
+                self.last_saved_datetime = None
+            else:
+                previous_data = pd.read_csv(
+                    self.file_path,
+                    usecols=['datetime', 'sample_id', 'clock_epoch'],
+                    parse_dates=['datetime'],
+                )
+                self.last_saved_datetime = previous_data['datetime'].max()
+                if not previous_data.empty:
+                    next_sample_id = int(previous_data['sample_id'].max()) + 1
+                    # A process restart begins a new correction segment because
+                    # there is no continuous wall/monotonic comparison across it.
+                    clock_epoch = int(previous_data['clock_epoch'].max()) + 1
+                del previous_data
         else:
             self.last_saved_datetime = None
+
+        self.acquisition_clock = AcquisitionClock(
+            next_sample_id=next_sample_id,
+            clock_epoch=clock_epoch,
+        )
 
         # Timer for periodic data collection
         self.timer = QTimer()
@@ -182,6 +248,13 @@ class TDL_package(QMainWindow):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         return filename
 
+    def next_part_filename(self, file_path):
+        root, extension = os.path.splitext(file_path)
+        part = 2
+        while os.path.exists(f"{root}-part{part}{extension}"):
+            part += 1
+        return f"{root}-part{part}{extension}"
+
     def start_collection(self, run_duration=None):
         # Start data collection for all devices dynamically
         for device_name, device in self.devices.items():
@@ -195,8 +268,17 @@ class TDL_package(QMainWindow):
             QTimer.singleShot(run_duration * 1000, self.stop_collection)
 
     def collect_data(self):
+        clock_observation = self.acquisition_clock.observe()
+        if clock_observation['clock_jump_s'] is not None:
+            logger.warning(
+                "System clock step detected: %+.3f s; starting clock epoch %d",
+                clock_observation['clock_jump_s'],
+                clock_observation['clock_epoch'],
+            )
+
         # Fetch data and append to respective streams
         # update variables like self.pressure that are from sensors.
+        latest_data = {}
         for device_name, device in self.devices.items():
             try:
                 data = device.get_all_data()
@@ -207,6 +289,9 @@ class TDL_package(QMainWindow):
                 # Update the display panel with the most recent data
                 self.display_panel.update_display_data(device_name, data[-1])
                 self.display_panel.update_time_clocktime()
+                latest_data.update({
+                    key: value for key, value in data[-1].items() if key != 'datetime'
+                })
 
                 # Handle pressure updates for the O3 sensor
                 if device_name == "o3_sensor":
@@ -221,28 +306,17 @@ class TDL_package(QMainWindow):
             except IndexError:
                 pass
 
-        # Merge all streams into a single DataFrame
-        full_data = None
-        for stream_name, stream in self.streams.items():
-            if full_data is None:
-                full_data = stream
-            else:
-                try:
-                    full_data = pd.merge(full_data, stream, on='datetime', how='outer')
-                except KeyError:
-                    # No read or missing data
-                    full_data = None
-
-        if full_data is not None:
-            # Remove the last N rows
-            full_data = pd.DataFrame(full_data).reindex(columns=self.all_variables)
-            full_data = full_data[:-len(self.streams)]
-
-            if not full_data.empty:
-                # Save new data to CSV and send most recent data to telemetry
-                lastline = full_data.tail(1)
-                lastline.to_csv(self.file_path, mode='a', index=False, header=not os.path.exists(self.file_path))
-                self.telemetry.send_data(lastline)
+        # Write one final snapshot per acquisition tick. Instrument packet times
+        # remain available in the rolling streams, but cannot control output order.
+        output_row = clock_observation | latest_data
+        lastline = pd.DataFrame([output_row]).reindex(columns=self.all_variables)
+        lastline.to_csv(
+            self.file_path,
+            mode='a',
+            index=False,
+            header=not os.path.exists(self.file_path),
+        )
+        self.telemetry.send_data(lastline)
 
         # Limit the memory footprint for each stream
         for stream_name in self.streams.keys():
