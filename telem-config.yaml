@@ -3,7 +3,7 @@ mts:
   iwg_prefix: UCB
   # ip: 10.11.96.10       # for lab tests
   ip: 10.11.96.131    # for flight (NTP is 10.11.96.1)
-  port: 7087           # was 7075
+  port: 7090           # was 7087
   rate: 1
   variables:
     - datetime
