@@ -7,7 +7,7 @@ import pandas as pd
 import yaml
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QGridLayout,
-    QComboBox, QFileDialog, QHBoxLayout, QCheckBox, QSizePolicy
+    QComboBox, QFileDialog, QHBoxLayout, QCheckBox, QSizePolicy, QMessageBox
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPalette, QColor
@@ -17,7 +17,7 @@ import matplotlib.dates as mdates
 
 
 class CSVPlotter(QMainWindow):
-    def __init__(self, win_name=None, left_y_vars=None, right_y_vars=None, offset=0):
+    def __init__(self, win_name=None, left_y_vars=None, right_y_vars=None, offset=0, config_path=None):
         super().__init__()
         self.open_windows = []
         self.win_name = win_name
@@ -26,6 +26,7 @@ class CSVPlotter(QMainWindow):
         self.user_modified_view = False
         self.offset = offset
         self.data = None
+        self.config_path = Path(config_path) if config_path else None
 
         self.c_background = "oldlace"
         self.c_loadbutton = "khaki"
@@ -35,7 +36,7 @@ class CSVPlotter(QMainWindow):
         self.c_filetext = "dimgrey"
 
         self.setWindowTitle(self.win_name)
-        self.setGeometry(50 + self.offset, 70 + self.offset, 800, 650)
+        self.setGeometry(250 + self.offset, 70 + self.offset, 800, 650)
         self.setStyleSheet(f"font-size: 14px; background-color: {self.c_background};")
 
         self.main_widget = QWidget()
@@ -53,22 +54,26 @@ class CSVPlotter(QMainWindow):
 
         compact_padding = "0px"
 
-        self.variable_label_1 = QLabel("Left-Axis Variable 1:")
+        self.variable_label_1 = QLabel("Left 1:")
+        self.variable_label_1.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.variable_label_1.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
         self.variable_combo_1 = QComboBox()
         self.variable_combo_1.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
 
-        self.variable_label_2 = QLabel("Left-Axis Variable 2:")
+        self.variable_label_2 = QLabel("Left 2:")
+        self.variable_label_2.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.variable_label_2.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
         self.variable_combo_2 = QComboBox()
         self.variable_combo_2.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
 
-        self.variable_label_3 = QLabel("Right-Axis Variable 1:")
+        self.variable_label_3 = QLabel("Right 1:")
+        self.variable_label_3.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.variable_label_3.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
         self.variable_combo_3 = QComboBox()
         self.variable_combo_3.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
 
-        self.variable_label_4 = QLabel("Right-Axis Variable 2:")
+        self.variable_label_4 = QLabel("Right 2:")
+        self.variable_label_4.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.variable_label_4.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
         self.variable_combo_4 = QComboBox()
         self.variable_combo_4.setStyleSheet(f"padding: {compact_padding}; margin: 0px;")
@@ -85,6 +90,10 @@ class CSVPlotter(QMainWindow):
         self.new_plot_button.setFixedHeight(20)
         self.new_plot_button.setStyleSheet(f"padding: 1px; margin: 1px; background-color: {self.c_loadbutton};")
 
+        self.save_config_button = QPushButton("Save Config", self)
+        self.save_config_button.setFixedHeight(20)
+        self.save_config_button.setStyleSheet(f"padding: 1px; margin: 1px; background-color: {self.c_plotbutton};")
+
         self.csv_file_label = QLabel("No file loaded")
         self.csv_file_label.setStyleSheet(f"padding: {compact_padding}; margin: 0px; color: {self.c_filetext};")
 
@@ -92,6 +101,7 @@ class CSVPlotter(QMainWindow):
         load_layout.addWidget(self.load_button)
         load_layout.addWidget(self.csv_file_label)
         load_layout.addWidget(self.new_plot_button)
+        load_layout.addWidget(self.save_config_button)
         load_layout.setSpacing(2)
 
         self.controls_layout.addLayout(load_layout)
@@ -101,16 +111,18 @@ class CSVPlotter(QMainWindow):
         controls_layout.setSpacing(2)
 
         controls_layout.addWidget(self.variable_label_1, 0, 0)
-        controls_layout.addWidget(self.variable_combo_1, 1, 0)
-        controls_layout.addWidget(self.variable_label_2, 2, 0)
-        controls_layout.addWidget(self.variable_combo_2, 3, 0)
+        controls_layout.addWidget(self.variable_combo_1, 0, 1)
+        controls_layout.addWidget(self.variable_label_3, 0, 2)
+        controls_layout.addWidget(self.variable_combo_3, 0, 3)
 
-        controls_layout.addWidget(self.variable_label_3, 0, 1)
-        controls_layout.addWidget(self.variable_combo_3, 1, 1)
-        controls_layout.addWidget(self.variable_label_4, 2, 1)
-        controls_layout.addWidget(self.variable_combo_4, 3, 1)
+        controls_layout.addWidget(self.variable_label_2, 1, 0)
+        controls_layout.addWidget(self.variable_combo_2, 1, 1)
+        controls_layout.addWidget(self.variable_label_4, 1, 2)
+        controls_layout.addWidget(self.variable_combo_4, 1, 3)
 
-        controls_layout.addWidget(self.plot_button, 1, 2)
+        controls_layout.addWidget(self.plot_button, 0, 4, 2, 1)
+        controls_layout.setColumnStretch(1, 1)
+        controls_layout.setColumnStretch(3, 1)
 
         self.controls_layout.addLayout(controls_layout)
 
@@ -138,7 +150,8 @@ class CSVPlotter(QMainWindow):
         self.new_csv_file = False
         self.load_button.clicked.connect(self.select_new_file)
         self.plot_button.clicked.connect(self.plot_data_button)
-        self.new_plot_button.clicked.connect(lambda: self.open_new_plot_window([self.left_y_vars[0]]))
+        self.new_plot_button.clicked.connect(self.open_new_plot_from_current)
+        self.save_config_button.clicked.connect(self.save_config)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_data)
@@ -161,9 +174,92 @@ class CSVPlotter(QMainWindow):
         
     def open_new_plot_window(self, left_y=None):
         # Open a new plot window instance
-        new_window = CSVPlotter(left_y_vars=left_y)
+        new_window = CSVPlotter(left_y_vars=left_y, config_path=self.config_path)
         new_window.show()
         self.open_windows.append(new_window)  # Keep a reference to prevent garbage collection
+
+    def open_new_plot_from_current(self):
+        variable = self.variable_combo_1.currentText()
+        self.open_new_plot_window([variable] if variable else [])
+
+    def selected_variables(self):
+        left_y = [
+            self.variable_combo_1.currentText(),
+            self.variable_combo_2.currentText(),
+        ]
+        right_y = [
+            self.variable_combo_3.currentText(),
+            self.variable_combo_4.currentText(),
+        ]
+
+        return {
+            "left_y": [variable for variable in left_y if variable],
+            "right_y": [variable for variable in right_y if variable],
+        }
+
+    def config_window_name(self, index):
+        if self.win_name:
+            return self.win_name
+
+        selected = self.selected_variables()
+        variables = selected["left_y"] + selected["right_y"]
+        if variables:
+            return ", ".join(variables)
+
+        return f"Plot {index}"
+
+    def current_config(self):
+        plot_windows = [
+            widget for widget in QApplication.topLevelWidgets()
+            if isinstance(widget, CSVPlotter) and widget.isVisible()
+        ]
+        plot_windows.sort(key=lambda window: (window.x(), window.y(), window.windowTitle()))
+
+        windows_config = {}
+        for index, window in enumerate(plot_windows, start=1):
+            selected = window.selected_variables()
+            win_config = {"name": window.config_window_name(index)}
+            if selected["left_y"]:
+                win_config["left_y"] = selected["left_y"]
+            if selected["right_y"]:
+                win_config["right_y"] = selected["right_y"]
+            windows_config[f"win{index}"] = win_config
+
+        return {"windows": windows_config}
+
+    def save_config(self):
+        if self.config_path is None:
+            QMessageBox.warning(self, "Save Config", "No config file path is available.")
+            return
+
+        try:
+            existing_text = self.config_path.read_text()
+        except FileNotFoundError:
+            existing_text = ""
+        except OSError as exc:
+            QMessageBox.critical(self, "Save Config", f"Could not read {self.config_path}:\n{exc}")
+            return
+
+        config_text = yaml.safe_dump(
+            self.current_config(),
+            sort_keys=False,
+            default_flow_style=False,
+            allow_unicode=True,
+        )
+
+        windows_index = existing_text.find("windows:")
+        if windows_index >= 0:
+            new_text = existing_text[:windows_index].rstrip() + "\n\n" + config_text
+        else:
+            new_text = existing_text.rstrip() + "\n\n" + config_text if existing_text.strip() else config_text
+
+        try:
+            self.config_path.write_text(new_text)
+        except OSError as exc:
+            QMessageBox.critical(self, "Save Config", f"Could not write {self.config_path}:\n{exc}")
+            return
+
+        QMessageBox.information(self, "Save Config", f"Saved plot configuration to {self.config_path}.")
 
     def on_user_interaction(self, event):
         """Set the flag when the user interacts with zoom or pan."""
@@ -467,7 +563,8 @@ class CSVPlotter(QMainWindow):
                 win_name=name,
                 left_y_vars=left_y_vars,
                 right_y_vars=right_y_vars,
-                offset=index * 20  # Slight offset for window positioning
+                offset=index * 20,  # Slight offset for window positioning
+                config_path=config_path,
             )
             window.show()
             windows.append(window)  # Keep references to prevent garbage collection
@@ -486,13 +583,14 @@ def main():
         help="Path to the configuration file (default: config-plot.yaml)"
     )
     args = parser.parse_args()
+    config_path = Path(args.config)
 
     # Load the configuration file
     try:
-        with open(args.config, 'r') as file:
+        with open(config_path, 'r') as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
-        print(f"Configuration file not found: {args.config}")
+        print(f"Configuration file not found: {config_path}")
         sys.exit(1)
 
     app = QApplication(sys.argv)
@@ -508,7 +606,8 @@ def main():
             win_name=name,
             left_y_vars=left_y_vars,
             right_y_vars=right_y_vars,
-            offset=index * 20
+            offset=index * 20,
+            config_path=config_path,
         )
         window.show()
         windows.append(window)  # Keep references to prevent garbage collection
