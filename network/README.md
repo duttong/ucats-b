@@ -106,3 +106,9 @@ Check it fired (or didn't need to) via:
 ```
 journalctl -t network-eth1-gateway
 ```
+## To set the network gateway for Panama
+
+These commands add a new route but does not remove the route set in Houston (10.16.101.0/24)
+
+sudo nmcli connection modify "USB2-Ethernet" +ipv4.routes "10.16.103.0/24 10.11.96.1"
+sudo nmcli connection up "USB2-Ethernet"
