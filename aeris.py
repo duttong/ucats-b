@@ -115,12 +115,21 @@ class Aeris:
 
     def _collect_data(self):
         """Collect data continuously from the device and store it in the buffer."""
+        discard_first_line = True
         while self.is_collecting:
             try:
                 # Locking only around serial port access to avoid conflicts
                 with self.serial_lock:
                     # Read a line from the analyzer
                     data = self.ser.readline().decode()
+
+                # The input reset can occur halfway through a continuously
+                # transmitted packet. Discard its first line to start parsing at
+                # the next complete packet boundary.
+                if discard_first_line:
+                    discard_first_line = False
+                    logger.debug(f"Discarded first Aeris line from {self.port}")
+                    continue
 
                 logger.debug(f"Raw data char length({len(data)}): {data.replace(chr(10), '')}")
 

@@ -1,0 +1,1 @@
+"""UCATS-B automated tests."""
