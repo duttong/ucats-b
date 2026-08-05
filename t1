@@ -1,2 +1,7 @@
 #!/bin/bash
 ip r
+
+# test route to 994
+ip r get 10.16.101.1
+# Panama equivalent
+ip r get 10.16.103.1
