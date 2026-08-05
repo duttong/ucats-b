@@ -22,8 +22,10 @@ data:
   iwg_prefix: UCBdata
   # list of ip address to send engineering data too.
   # ip: [10.11.96.10, 10.11.96.11]    # for lab tests
-  # for flight ..101. for Ellington use ..102. for elsewhere
+  # for flight ..101. for Ellington 
   ip: [10.16.101.145, 10.16.101.146, 10.16.101.147, 10.16.101.148]
+  # Pananma ..103.
+  #ip: [10.16.103.145, 10.16.103.146, 10.16.103.147, 10.16.103.148]
   port: 50555
   rate: 1   # frequency to send in seconds
   variables:
