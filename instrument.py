@@ -378,14 +378,28 @@ class TDL_package(QMainWindow):
         self.display_panel.sequence_idle()
 
     def pilot_fail_light(self, cycle=1):
-        """ pilot fail light circuit 
-        
+        """ pilot fail light circuit
+
+            Signals the pilot that THIS PROGRAM is alive -- not that every sensor is
+            currently reporting. The toggling below is the heartbeat: while this loop
+            runs the pilot_wd line keeps alternating, and if instrument.py dies or
+            hangs the line stops moving and the indicator falls to fail.
+
             The fail light has three stages of logic.
             0) Start with the fail light ON.
             1) Wait 5 second, check to see if the O3 sensor is up.
                If the sensor is on. Turn the fail light OFF
             2) Keep fail light off for aeris_wait seconds waiting for the Aeris instruements.
-            3) Check Aeris instruments for data. No data for max_missing_data, turn fail light ON.
+            3) Enter the monitoring loop below.
+
+            Note on stage 3: the .empty tests read self.streams[...], the rolling
+            accumulated DataFrame. It is trimmed to stream_size but never cleared, so
+            .empty flips to False on a device's first row and stays False for the rest
+            of the run. That makes this a "did this device ever produce data?" gate,
+            not a staleness check -- a sensor going quiet mid-flight (including an
+            operator-commanded Aeris reboot) will not trip the fail light. Intended:
+            a mid-flight sensor dropout is not a reason to signal the pilot. Don't
+            "fix" it into a recency check without that being a deliberate decision.
         """
         aeris_wait = 180        # time (s) to wait for Aeris instruments
         max_missing_data = 5    # Maximum allowed consecutive Aeris empty readings
