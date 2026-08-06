@@ -37,6 +37,7 @@ data:
     - d1_P_mbars
     - d1_T_gas
     - d1_T_ambient
+    - d1_H2O_ppm
     - d1_T_TEC
     - d1_T_TEC_Sink
     - d1_Det_PID
@@ -47,6 +48,7 @@ data:
     - d2_P_mbars
     - d2_T_gas
     - d2_T_ambient
+    - d2_H2O_ppm
     - d2_T_TEC_Sink
 
     - j_P_cal0_low
