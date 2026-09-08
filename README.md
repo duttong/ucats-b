@@ -97,6 +97,8 @@ Logs are archived alongside CSVs by `flightmv` / `calmv` (the glob covers rotate
 
 - [config.yaml](config.yaml) — devices, serial ports, prefixes, display variables; LabJack DIO/AIN mappings; altitude/sequence thresholds.
 - [telem-config.yaml](telem-config.yaml) — UDP telemetry recipients and per-payload variable lists. The `mts:` block targets the aircraft MTS; the `data:` block fans out to ground stations. Lab-test, Ellington, and remote IPs are kept as inline alternates — comment/uncomment rather than editing values.
+  - Each block has its own `rate:`, a **tick divisor**, not a period in seconds — `1` sends every acquisition tick (~950 ms), `2` every 2nd tick, `3` every 3rd, and so on. Skipped ticks are still written to the CSV; only the outgoing UDP packet is skipped. A missing, non-integer, or non-positive value logs a warning and falls back to `1`.
+  - Both payloads gap-fill `nan` rows (from the ~1/2 Hz O3 and Maycomm packets) by holding the last valid value per variable for up to 6 s before letting it expire back to `nan` — this happens independently of `rate`, so raising `rate` thins out how often packets go out without making any single packet's values staler.
 - [cals.yaml](cals.yaml) — calibration cylinder concentrations (CO2, CH4, N2O, CO).
 - [config-plot.yaml](config-plot.yaml) — windows for the standalone CSV plotter.
 
