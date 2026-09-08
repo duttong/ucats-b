@@ -56,14 +56,20 @@ The `pilot_off_event`, `alt_high_event`, and `alt_low_event` `threading.Event` i
 
 ### Telemetry
 
-`Telemetry` ([telemetry.py](telemetry.py)) sends two UDP payloads per tick using the variable lists in `telem-config.yaml`:
+`Telemetry` ([telemetry.py](telemetry.py)) sends two UDP payloads, each on its own `rate:` boundary, using the variable lists in `telem-config.yaml`:
 
 - `mts:` — single IP (the aircraft MTS box), prefixed `UCB,...`
 - `data:` — list of ground-station IPs, prefixed `UCBdata,...`
 
 Both payloads are CSV rows starting with the `iwg_prefix` and an ISO-like timestamp. The IP blocks in `telem-config.yaml` carry inline comments distinguishing lab-test vs. flight vs. Ellington configurations — when changing IPs, swap the active line rather than editing values, so the alternates stay documented.
 
-**The MTS payload is gap-filled; the `data:` payload and the CSV are not.** The 2BTech O3 and Maycomm packets arrive at ~1/2 Hz, so at the 1 Hz tick every other row is `nan` for `oz_o3best`, `oz_p`, and `w_H2Obest` (measured ~53%, a strict every-other-row pattern), which MTS renders badly. `_hold_last_valid` carries the last valid value forward for every variable in the `mts:` list, expiring after `Telemetry.MTS_HOLD_SECONDS` (6 s — the normal 2 s cadence plus one missed packet). The expiry is the point: without it a dead sensor would display a frozen, plausible value indefinitely and hide the failure. On expiry the held entry is deleted so the staleness `warning` fires once per outage, not every tick. `send_data` receives a single row (`full_data.tail(1)`), so there is no history to `ffill` against — last-valid values are held as state on the `Telemetry` object. Filling happens downstream of `instrument.py`'s `to_csv`, so archived data stays raw.
+**`rate:` is a tick divisor, not a period in seconds** — `1` sends on every acquisition tick, `2` on every 2nd, `3` on every 3rd; each block has its own. Since the tick is 950 ms and not 1 s, `rate: 2` is really ~1.9 s plus per-tick work, so the wall-clock cadence is approximate and runs slightly slow. Both blocks share one `tick_count`, so equal rates stay phase-aligned. A missing, non-integer, or non-positive `rate` logs a warning and falls back to `1`; a float is truncated (`2.7` → `2`). What goes out on a send tick is a snapshot of that tick's row — skipped ticks are dropped from telemetry entirely, never averaged or backlogged, and **the CSV is written on every tick regardless**. Note `unused/telem.py` used the same key as a `time.sleep()` argument in seconds; that meaning is dead along with the module.
+
+**Both UDP payloads are gap-filled; the CSV is not.** The 2BTech O3 and Maycomm packets arrive at ~1/2 Hz, so at the ~1 Hz tick roughly every other row is `nan` for `oz_o3best`, `oz_p`, and `w_H2Obest`, which neither MTS nor the ground-station displays render usefully. `_hold_last_valid` carries the last valid value forward for every variable in the outgoing list, expiring after `Telemetry.HOLD_SECONDS` (6 s — the normal 2 s cadence plus one missed packet). The expiry is the point: without it a dead sensor would display a frozen, plausible value indefinitely and hide the failure. On expiry the held entry is deleted so the staleness `warning` fires once per outage, not every tick.
+
+`_observe` records last-valid values on *every* tick over `held_vars` (the deduped union of both blocks' variable lists) while `_hold_last_valid` fills only on send ticks. Keeping those two separate is what makes `rate > 1` safe: a ~1/2 Hz sensor whose valid rows happen to land on skipped ticks would otherwise never refresh its held value and would expire to `nan` permanently. Because of it, **`rate` changes how often packets go out, not how current each one is** — measured on a real file, the age distribution of `oz_o3best` in the MTS payload is identical at `rate: 1` and `rate: 2` (mean ~1 s; ~46% fresh, ~26% one tick old, ~10% ≥3 s, ~0.5% expired to `nan`).
+
+`send_data` receives a single row (`full_data.tail(1)`), so there is no history to `ffill` against — last-valid values are held as state on the `Telemetry` object. Filling happens downstream of `instrument.py`'s `to_csv`, so **the archive on disk stays raw and is the record of what was actually measured**; the wire format deliberately differs from it. If a payload should ever go out unfilled again, that is a change to `_send`, which now fills unconditionally.
 
 ### GUI and the cal/air sequence
 
