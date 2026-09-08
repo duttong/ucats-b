@@ -5,3 +5,4 @@ shutdown.txt
 *.log
 data/*
 .vscode/
+.DS_Store
