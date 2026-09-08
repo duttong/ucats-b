@@ -4,7 +4,9 @@ mts:
   # ip: 10.11.96.10    # for lab tests
   ip: 10.11.96.131     # for flight (NTP is 10.11.96.1)
   port: 7090           # was 7087
-  rate: 1
+  # rate is a tick divisor, not seconds: 1 = every acquisition tick (~1 Hz),
+  # 2 = every 2nd tick, 3 = every 3rd. Skipped ticks are still written to the CSV.
+  rate: 2
   variables:
     - datetime
     - d1_CO2c_ppm
@@ -23,11 +25,11 @@ data:
   # list of ip address to send engineering data too.
   # ip: [10.11.96.10, 10.11.96.11]    # for lab tests
   # for flight ..101. for Ellington 
-  ip: [10.16.101.145, 10.16.101.146, 10.16.101.147, 10.16.101.148]
-  # Pananma ..103.
-  #ip: [10.16.103.145, 10.16.103.146, 10.16.103.147, 10.16.103.148]
+  #ip: [10.16.101.145, 10.16.101.146, 10.16.101.147, 10.16.101.148]
+  # Pananma ..105.
+  ip: [10.16.105.145, 10.16.105.146, 10.16.105.147, 10.16.105.148]
   port: 50555
-  rate: 1   # frequency to send in seconds
+  rate: 2   # tick divisor, as above: 1 = every tick, 2 = every 2nd tick
   variables:
     - datetime
     - d1_CO2c_ppm
