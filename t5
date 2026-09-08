@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Measure the actual send interval of outgoing UDP telemetry from a running
+# instrument.py, broken out per payload (MTS vs. ground-station data), to
+# confirm telem-config.yaml's rate: settings are producing the cadence
+# expected (rate: 1 ~= 0.95s, rate: 2 ~= 1.9s, etc. -- see README.md).
+# Usage: t5 [seconds]
+
+DURATION="${1:-30}"
+
+PID=$(pgrep -f 'instrument.py' | head -1)
+
+if [[ -z "$PID" ]]; then
+    echo "instrument.py is not running."
+    exit 1
+fi
+
+CAPTURE=$(mktemp)
+trap 'rm -f "$CAPTURE"' EXIT
+
+echo "Watching UDP sends from instrument.py (PID $PID) for ${DURATION}s..."
+sudo timeout "$DURATION" strace -p "$PID" -e trace=sendto -s 300 -tt > "$CAPTURE" 2>&1
+
+awk '
+    match($0, /^[0-9]+:[0-9]+:[0-9]+\.[0-9]+/) { ts = substr($0, RSTART, RLENGTH) }
+    /"UCBdata,/          { print "DATA", ts; next }
+    /"UCB,/              { print "MTS", ts }
+' "$CAPTURE" | awk '
+    {
+        split($2, hms, ":")
+        sec = hms[1] * 3600 + hms[2] * 60 + hms[3]
+        if (last[$1] != "") {
+            printf "%-4s interval: %.3fs\n", $1, sec - last[$1]
+        }
+        last[$1] = sec
+    }
+'
